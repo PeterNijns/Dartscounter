@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Darts — Scorebord</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Darts">
+<meta name="theme-color" content="#10302a">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='38' fill='%2310302a'/%3E%3Ccircle cx='90' cy='90' r='62' fill='none' stroke='%23d9b25a' stroke-width='8'/%3E%3Ccircle cx='90' cy='90' r='30' fill='none' stroke='%23c2392f' stroke-width='8'/%3E%3Ccircle cx='90' cy='90' r='9' fill='%233f8f5e'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --board:#10302a;--board2:#0b2520;--chalk:#f3efe2;--chalk-dim:#bdb8a6;
+    --red:#c2392f;--green:#3f8f5e;--gold:#d9b25a;
+    --line:rgba(243,239,226,.18);--cell:rgba(243,239,226,.04);
+    --cell-hi:rgba(217,178,90,.14);--dead:rgba(194,57,47,.20);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(120% 80% at 50% -10%, #18443a 0%, var(--board) 45%, var(--board2) 100%);
+    color:var(--chalk);min-height:100vh;padding:18px 14px 60px;
+    padding-top:max(18px,env(safe-area-inset-top));
+    padding-bottom:max(60px,env(safe-area-inset-bottom));}
+  h1{font-family:"Arial Black","Segoe UI",sans-serif;letter-spacing:1px;font-size:1.7rem;margin:0 0 2px;text-transform:uppercase;}
+  h1 .pip{color:var(--red);} h1 .pip2{color:var(--green);}
+  .sub{color:var(--chalk-dim);font-size:.82rem;margin:0 0 18px;}
+  .wrap{max-width:880px;margin:0 auto;}
+  .card{background:linear-gradient(180deg, rgba(243,239,226,.05), rgba(243,239,226,.02));border:1px solid var(--line);border-radius:14px;padding:18px;}
+
+  .players-setup{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
+  .prow{display:flex;gap:8px;align-items:center;}
+  .prow .num{width:26px;color:var(--gold);font-weight:800;text-align:center;}
+  input[type=text]{flex:1;background:rgba(0,0,0,.22);border:1px solid var(--line);color:var(--chalk);border-radius:9px;padding:11px 12px;font-size:1rem;}
+  input[type=text]:focus{outline:none;border-color:var(--gold);}
+  textarea{width:100%;min-height:96px;margin:10px 0;background:rgba(0,0,0,.22);border:1px solid var(--line);color:var(--chalk);border-radius:9px;padding:10px 12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.78rem;resize:vertical;}
+  textarea:focus{outline:none;border-color:var(--gold);}
+  button{font-family:inherit;cursor:pointer;border:none;}
+  .btn{background:var(--green);color:#06140f;font-weight:800;border-radius:10px;padding:12px 16px;font-size:1rem;letter-spacing:.3px;}
+  .btn:active{transform:translateY(1px);}
+  .btn:disabled{opacity:.4;cursor:default;}
+  .btn.ghost{background:transparent;color:var(--chalk);border:1px solid var(--line);}
+  .btn.red{background:var(--red);color:#fff;}
+  .btn.gold{background:var(--gold);color:#231c0a;}
+  .btn-x{background:transparent;color:var(--red);font-size:1.4rem;padding:4px 10px;font-weight:800;line-height:1;}
+  .setup-actions{display:flex;gap:10px;flex-wrap:wrap;}
+
+  .mode-sel{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+  .mode-sel button{flex:1;min-width:90px;background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--chalk-dim);border-radius:11px;padding:13px 8px;font-weight:800;font-size:1rem;}
+  .mode-sel button.active{background:var(--green);color:#06140f;border-color:var(--green);}
+  .opt-row{display:flex;align-items:center;gap:9px;margin:0 0 14px;color:var(--chalk-dim);font-size:.9rem;}
+  .opt-row input{width:20px;height:20px;accent-color:var(--gold);}
+
+  .dice-grid{display:flex;flex-direction:column;gap:12px;margin:8px 0 16px;}
+  .dice-row{display:flex;align-items:center;gap:14px;background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:12px;padding:10px 14px;}
+  .dice-row.tie{border-color:var(--red);}
+  .dice-name{flex:1;font-weight:800;font-size:1.05rem;word-break:break-word;}
+  .dice-rank{color:var(--gold);font-weight:900;width:34px;text-align:center;font-size:1.1rem;}
+  .die{width:56px;height:56px;border-radius:11px;background:var(--chalk);box-shadow:0 3px 0 rgba(0,0,0,.35) inset, 0 2px 6px rgba(0,0,0,.4);display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:8px;cursor:pointer;}
+  .die .pip{width:9px;height:9px;border-radius:50%;background:#1a1a1a;align-self:center;justify-self:center;visibility:hidden;}
+  .die .pip.on{visibility:visible;}
+  .die.empty{background:rgba(243,239,226,.12);box-shadow:none;}
+  .die.empty .pip{background:var(--chalk-dim);}
+  .die.rolling{animation:shake .4s linear infinite;}
+  @keyframes shake{0%,100%{transform:translate(0,0) rotate(0)}25%{transform:translate(-2px,1px) rotate(-4deg)}75%{transform:translate(2px,-1px) rotate(4deg)}}
+  .dice-msg{color:var(--chalk-dim);font-size:.85rem;margin:0 0 14px;min-height:1.2em;}
+  .dice-msg.warn{color:var(--red);}
+
+  .mult-bar{display:flex;gap:8px;align-items:center;margin:0 0 12px;flex-wrap:wrap;}
+  .mult-label{color:var(--chalk-dim);font-size:.82rem;margin-right:2px;}
+  .mult{flex:1;min-width:90px;background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--chalk-dim);border-radius:11px;padding:11px 6px;font-weight:800;font-size:.92rem;text-align:center;}
+  .mult b{display:block;font-size:1.2rem;color:var(--chalk);}
+  .mult.active{background:var(--gold);border-color:var(--gold);color:#231c0a;}
+  .mult.active b{color:#231c0a;}
+
+  .turnbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:12px;}
+  .turn-who{font-size:1.15rem;font-weight:900;}
+  .turn-who b{color:var(--gold);}
+  .turn-meta{color:var(--chalk-dim);font-size:.85rem;flex:1;}
+  .turnbar .btn{padding:9px 13px;font-size:.9rem;}
+  .nextpulse{animation:pulse 1.1s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(217,178,90,.6)}50%{box-shadow:0 0 0 7px rgba(217,178,90,0)}}
+  .bustmsg{color:var(--red);font-weight:900;}
+
+  .board{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:rgba(0,0,0,.15);position:relative;}
+  table{width:100%;border-collapse:collapse;}
+  th,td{border-bottom:1px solid var(--line);text-align:center;}
+  thead th{padding:10px 6px;background:rgba(0,0,0,.25);vertical-align:bottom;}
+  th.curcol{background:rgba(217,178,90,.18);box-shadow:inset 0 -3px 0 var(--gold);}
+  .pname{font-weight:800;font-size:1rem;word-break:break-word;}
+  .pscore{display:inline-block;margin-top:4px;color:var(--gold);font-weight:900;font-size:1.25rem;font-variant-numeric:tabular-nums;}
+  .pscore.lead{color:var(--green);}
+  .col-num{width:74px;background:rgba(0,0,0,.28);font-family:"Arial Black",sans-serif;font-size:1.35rem;color:var(--chalk);}
+  .col-num .bulllbl{font-size:.92rem;}
+  td.cell{height:62px;background:var(--cell);position:relative;transition:background .12s;}
+  td.cell.live{cursor:pointer;background:var(--cell-hi);}
+  td.cell.live:active{background:rgba(217,178,90,.28);}
+  td.cell.dim{opacity:.5;}
+  td.closed{background:rgba(63,143,94,.12);}
+  tbody tr{position:relative;}
+  tr.dead .col-num,tr.dead td.cell{color:var(--chalk-dim);background:var(--dead);}
+  tr.dead::after{content:"";position:absolute;left:0;right:0;top:50%;height:3px;background:var(--red);box-shadow:0 0 6px rgba(194,57,47,.6);transform:translateY(-50%);pointer-events:none;}
+  .marks{position:relative;width:42px;height:42px;margin:0 auto;}
+  .marks .bar{position:absolute;top:50%;left:50%;width:36px;height:5px;border-radius:4px;background:var(--chalk);transform-origin:center;box-shadow:0 0 4px rgba(243,239,226,.35);}
+  .marks .bar.fwd{transform:translate(-50%,-50%) rotate(45deg);}
+  .marks .bar.back{transform:translate(-50%,-50%) rotate(-45deg);}
+  .marks .ring{position:absolute;top:50%;left:50%;width:42px;height:42px;border:5px solid var(--chalk);border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 5px rgba(243,239,226,.3);}
+
+  /* x01 */
+  .x01-scores{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+  .x01-card{flex:1;min-width:120px;background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center;}
+  .x01-card.cur{border-color:var(--gold);background:rgba(217,178,90,.12);box-shadow:0 0 0 1px var(--gold) inset;}
+  .x01-card .nm{font-weight:800;word-break:break-word;}
+  .x01-card .rem{font-family:"Arial Black",sans-serif;font-size:2.1rem;color:var(--gold);margin:4px 0;}
+  .x01-card.cur .rem{color:var(--chalk);}
+  .x01-card.done .rem{color:var(--green);}
+  .x01-card .info{font-size:.74rem;color:var(--chalk-dim);min-height:1em;}
+  .x01-pad{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+  .x01-pad button{background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--chalk);border-radius:10px;padding:15px 0;font-size:1.15rem;font-weight:800;}
+  .x01-pad button:active{background:var(--cell-hi);}
+  .x01-pad button.bull{grid-column:span 5;background:var(--red);color:#fff;font-size:1rem;}
+  .x01-pad button:disabled{opacity:.3;}
+
+  .tools{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+  .tools .btn{flex:1;min-width:110px;}
+  .winner{margin-top:16px;border:1px solid var(--gold);border-radius:14px;padding:16px;text-align:center;background:rgba(217,178,90,.10);}
+  .winner h2{margin:0;font-size:1.4rem;color:var(--gold);}
+  .winner p{margin:6px 0 10px;color:var(--chalk-dim);font-size:.9rem;}
+  .hint{color:var(--chalk-dim);font-size:.78rem;margin-top:14px;line-height:1.5;}
+  .hidden{display:none !important;}
+
+  .hsec{margin-bottom:22px;}
+  .hsec h3{font-size:1rem;margin:0 0 10px;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;}
+  .histfilter{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+  .histfilter button{background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--chalk-dim);border-radius:9px;padding:8px 16px;font-weight:700;}
+  .histfilter button.active{background:var(--gold);color:#231c0a;border-color:var(--gold);}
+  table.lead{width:100%;border-collapse:collapse;font-size:.92rem;}
+  table.lead th,table.lead td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:right;}
+  table.lead th:first-child,table.lead td:first-child{text-align:left;}
+  table.lead thead th{color:var(--chalk-dim);font-weight:700;font-size:.78rem;text-transform:uppercase;}
+  table.lead td.win{color:var(--green);font-weight:900;}
+  .chartwrap{background:rgba(0,0,0,.15);border:1px solid var(--line);border-radius:12px;padding:12px;}
+  .charttitle{color:var(--chalk-dim);font-size:.8rem;margin:0 0 6px;}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:.82rem;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .legend i{width:13px;height:13px;border-radius:3px;display:inline-block;}
+  .gamelog{display:flex;flex-direction:column;gap:8px;}
+  .glog{background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:.88rem;}
+  .glog .gdate{color:var(--chalk-dim);font-size:.78rem;}
+  .badge{display:inline-block;font-size:.7rem;font-weight:800;padding:2px 7px;border-radius:6px;background:rgba(217,178,90,.2);color:var(--gold);margin-right:6px;}
+  .empty-note{color:var(--chalk-dim);font-size:.9rem;font-style:italic;}
+
+  @media (max-width:520px){
+    .col-num{width:54px;font-size:1.1rem;}
+    .pname{font-size:.82rem;}
+    .marks{width:34px;height:34px;} .marks .bar{width:29px;height:4px;} .marks .ring{width:34px;height:34px;border-width:4px;}
+    .die{width:48px;height:48px;} .die .pip{width:7px;height:7px;}
+    .x01-pad button{padding:12px 0;font-size:1rem;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Darts <span class="pip">Score</span><span class="pip2">bord</span></h1>
+  <p class="sub">Cricket · 501 · 201 — met dobbelvolgorde en blijvend scorebord.</p>
+
+  <!-- ===== SETUP ===== -->
+  <section id="setup" class="card">
+    <div class="mode-sel" id="modeSel">
+      <button data-mode="cricket" class="active">Cricket</button>
+      <button data-mode="501">501</button>
+      <button data-mode="201">201</button>
+    </div>
+    <div class="opt-row hidden" id="optDoubleOut">
+      <input type="checkbox" id="doubleOut"><label for="doubleOut">Dubbel uit (finishen op een dubbel)</label>
+    </div>
+    <div class="opt-row" id="optBot">
+      <input type="checkbox" id="vsBot"><label for="vsBot">Speel tegen de robot 🤖</label>
+    </div>
+    <div class="opt-row hidden" id="optSkill">
+      <label style="flex:1;">Niveau robot: <b id="skillVal" style="color:var(--gold);">5</b> / 10</label>
+      <input type="range" id="skillRange" min="0" max="10" value="5" style="flex:1;accent-color:var(--gold);">
+    </div>
+    <div class="players-setup" id="playersSetup"></div>
+    <div class="setup-actions">
+      <button class="btn ghost" id="addPlayer">+ Speler</button>
+      <button class="btn" id="toDice">Volgorde gooien 🎲</button>
+      <button class="btn ghost" id="toHistory1">📊 Scorebord</button>
+    </div>
+  </section>
+
+  <!-- ===== DOBBELEN ===== -->
+  <section id="dice" class="card hidden">
+    <div class="dice-grid" id="diceGrid"></div>
+    <p class="dice-msg" id="diceMsg"></p>
+    <div class="setup-actions">
+      <button class="btn gold" id="rollAll">🎲 Gooi voor iedereen</button>
+      <button class="btn" id="confirmOrder" disabled>Bevestig volgorde ▸</button>
+      <button class="btn ghost" id="backToSetup">◂ Spelers</button>
+    </div>
+    <p class="hint">Iedereen gooit één keer. Hoogste worp begint. Bij gelijkspel gooien die spelers opnieuw (tik op hun dobbelsteen of gooi voor iedereen).</p>
+  </section>
+
+  <!-- ===== GAME ===== -->
+  <section id="game" class="hidden">
+    <div class="turnbar" id="turnbar"></div>
+    <div class="mult-bar">
+      <span class="mult-label">Worp telt als:</span>
+      <button class="mult active" data-m="1"><b>1×</b>Enkel</button>
+      <button class="mult" data-m="2"><b>2×</b>Dubbel</button>
+      <button class="mult" data-m="3"><b>3×</b>Triple</button>
+    </div>
+
+    <div class="board" id="cricketBoard">
+      <table><thead><tr id="headRow"></tr></thead><tbody id="bodyRows"></tbody></table>
+    </div>
+
+    <div id="x01Panel" class="hidden">
+      <div class="x01-scores" id="x01Scores"></div>
+      <div class="x01-pad" id="x01Pad"></div>
+    </div>
+
+    <div id="winnerBox"></div>
+    <div class="tools">
+      <button class="btn gold" id="undo">↶ Ongedaan</button>
+      <button class="btn ghost" id="toHistory2">📊 Scorebord</button>
+      <button class="btn ghost" id="newGame">Nieuw spel</button>
+      <button class="btn red" id="quitGame">Spelers wijzigen</button>
+    </div>
+    <p class="hint" id="gameHint"></p>
+  </section>
+
+  <!-- ===== SCOREBORD ===== -->
+  <section id="history" class="card hidden">
+    <div class="histfilter" id="histFilter">
+      <button data-f="all" class="active">Alle</button>
+      <button data-f="cricket">Cricket</button>
+      <button data-f="501">501</button>
+      <button data-f="201">201</button>
+    </div>
+    <div class="hsec"><h3>Ranglijst</h3><div id="leadTable"></div></div>
+    <div class="hsec"><h3>Verloop over de spellen</h3><div id="chartArea"></div></div>
+    <div class="hsec"><h3>Gespeelde spellen</h3><div class="gamelog" id="gameLog"></div></div>
+
+    <div class="hsec">
+      <h3>Back-up — exporteren / importeren</h3>
+      <p class="empty-note" style="margin:-4px 0 10px;">Bewaar je scorebord (en lopend spel) als bestand of als tekst. Handig als de opslag in de browser niet bewaard blijft.</p>
+      <div class="setup-actions">
+        <button class="btn gold" id="doExport">⬇ Exporteren</button>
+        <button class="btn ghost" id="pickImportFile">📂 Importeer bestand</button>
+        <input type="file" id="importFileInput" accept="application/json,.json" hidden>
+      </div>
+      <textarea id="backupText" placeholder="Hier verschijnt je back-uptekst na 'Exporteren'. Of plak hier eerder gekopieerde tekst en tik op 'Importeer uit tekst'."></textarea>
+      <div class="setup-actions">
+        <button class="btn ghost" id="copyBackup">Kopieer tekst</button>
+        <button class="btn" id="importTextBtn">Importeer uit tekst</button>
+      </div>
+      <p class="empty-note" id="backupMsg" style="min-height:1.1em;"></p>
+    </div>
+
+    <div class="setup-actions">
+      <button class="btn" id="backFromHistory">◂ Terug</button>
+      <button class="btn red" id="clearHistory">Historiek wissen</button>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+const STORE="darts_app_v3";
+const STORE_HIST="darts_hist_v2";
+const NUMS=[20,19,18,17,16,15,25];           // Cricket; 25 = Bull
+const PALETTE=["#d9b25a","#3f8f5e","#c2392f","#5b9bd5","#b06fd0","#e0843a","#46b8a8","#d36fa0"];
+
+let state=null, mult=1, history=[], dice=null, games=[];
+let setupMode="cricket", setupDoubleOut=false, histFilter="all";
+let setupVsBot=false, setupSkill=5, botBusy=false;
+
+/* ---------- opslag ---------- */
+function save(){try{localStorage.setItem(STORE,JSON.stringify({state,mult}));}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem(STORE)||"null");if(d&&d.state){state=d.state;mult=d.mult||1;return true;}}catch(e){}return false;}
+function saveGames(){try{localStorage.setItem(STORE_HIST,JSON.stringify(games));}catch(e){}}
+function loadGames(){try{games=JSON.parse(localStorage.getItem(STORE_HIST)||"[]")||[];}catch(e){games=[];}}
+function snap(){history.push(JSON.stringify(state));if(history.length>400)history.shift();}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+/* ---------- gedeeld ---------- */
+function freshCricket(name){const marks={};NUMS.forEach(n=>marks[n]=0);return{name,marks,points:0};}
+function win(){return state.mode==='x01'?winnerX01():winnerCricket();}
+function useDart(){state.darts++;}
+function nextTurn(){
+  snap();state.darts=0;
+  state.current=(state.current+1)%state.players.length;
+  if(state.current===0)state.round++;
+  if(state.mode==='x01'){state.turnStart=state.players[state.current].score;state.bust=false;state.dartsLog=[];}
+  save();render();botTurnIfNeeded();
+}
+function miss(){
+  if(state.darts>=3||state.bust||win())return;
+  snap();
+  if(state.mode==='x01'){state.players[state.current].dartsUsed++;state.dartsLog.push('Mis');}
+  useDart();save();render();
+}
+
+/* ---------- Cricket ---------- */
+function isClosedBy(p,n){return p.marks[n]>=3;}
+function rowDead(n){return state.players.every(p=>isClosedBy(p,n));}
+function someoneOpen(n,ex){return state.players.some((p,i)=>i!==ex&&!isClosedBy(p,n));}
+function winnerCricket(){
+  let best=null;
+  state.players.forEach(p=>{
+    if(NUMS.every(n=>p.marks[n]>=3)){
+      const o=state.players.filter(q=>q!==p).map(q=>q.points);
+      const mx=o.length?Math.max(...o):0;
+      if(p.points>=mx&&(!best||p.points>best.points))best=p;
+    }
+  });return best;
+}
+function addHit(n,count){
+  if(rowDead(n)||state.darts>=3||win())return;
+  snap();const p=state.players[state.current];
+  let rem=count;while(rem>0&&p.marks[n]<3){p.marks[n]++;rem--;}
+  if(rem>0&&someoneOpen(n,state.current))p.points+=rem*n;
+  mult=1;useDart();save();render();
+}
+
+/* ---------- 501 / 201 ---------- */
+function winnerX01(){return state.players.find(p=>p.score===0)||null;}
+function labelDart(num,m,val){
+  if(num===25)return val===50?'Bull50':'25';
+  return (m===2?'D':m===3?'T':'')+num;
+}
+function applyX01Dart(val,isDouble,label){
+  if(state.darts>=3||state.bust||win())return;
+  snap();const p=state.players[state.current];
+  p.dartsUsed++;state.dartsLog.push(label);
+  const after=p.score-val, dOut=state.doubleOut;
+  let bust=false;
+  if(after<0)bust=true;
+  else if(dOut&&after===1)bust=true;
+  else if(dOut&&after===0&&!isDouble)bust=true;
+  if(bust){state.bust=true;p.score=state.turnStart;state.darts=3;}
+  else{p.score=after;useDart();}
+  save();render();
+}
+function addDartX01(num){
+  const m=mult;
+  const val=(num===25)?(m>=2?50:25):num*m;
+  const isDbl=num===25?val===50:m===2;
+  applyX01Dart(val,isDbl,labelDart(num,m,val));
+  mult=1;
+}
+
+/* ---------- robot ---------- */
+function botTurnIfNeeded(){
+  const p=state&&state.players[state.current];
+  if(botBusy||!p||!p.isBot||win())return;
+  botBusy=true;
+  setTimeout(botDartStep,650);
+}
+function botDartStep(){
+  if(win()){botBusy=false;render();return;}
+  if(state.darts>=3||(state.mode==='x01'&&state.bust)){
+    setTimeout(()=>{botBusy=false;nextTurn();},750);
+    return;
+  }
+  botThrowOne();
+  setTimeout(botDartStep,750);
+}
+function botThrowOne(){
+  const p=state.players[state.current];
+  const pHit=Math.max(0,Math.min(10,p.skill||0))/10;
+  if(state.mode!=='x01'){
+    let target=null;
+    for(const n of NUMS){if(p.marks[n]<3){target=n;break;}}        // eerst sluiten, hoog naar laag
+    if(target===null)for(const n of NUMS){if(someoneOpen(n,state.current)){target=n;break;}} // anders punten
+    if(target===null){miss();return;}
+    if(Math.random()<pHit){mult=1;addHit(target,1);}else{miss();}
+    return;
+  }
+  // x01
+  if(Math.random()>=pHit){applyX01Dart(0,false,'mis');return;}
+  const R=p.score,dOut=state.doubleOut;
+  let val,isDbl=false,label;
+  if(R>60){
+    val=(dOut&&R<=100)?(R-40):60;       // dubbel uit: zet 40 klaar; anders T20
+    label=String(val);
+  }else if(!dOut){
+    val=R;isDbl=true;label=R+' uit';     // straight: gooi exact uit
+  }else if(R===50){val=50;isDbl=true;label='Bull';}
+  else if(R<=40&&R%2===0){val=R;isDbl=true;label='D'+(R/2);}
+  else if(R>40){val=R-40;label=String(val);}     // 41..60 oneven/onfinishbaar → zet 40 klaar
+  else{val=(R>=3)?1:0;label=val?'1':'mis';}       // klein oneven → laat even getal staan
+  applyX01Dart(val,isDbl,label);
+}
+
+/* ---------- render ---------- */
+function markHTML(c){let h='<div class="marks">';if(c>=1)h+='<span class="bar fwd"></span>';if(c>=2)h+='<span class="bar back"></span>';if(c>=3)h+='<span class="ring"></span>';return h+'</div>';}
+function render(){
+  document.querySelectorAll('.mult').forEach(b=>b.classList.toggle('active',Number(b.dataset.m)===mult));
+  if(state.mode==='x01')renderX01();else renderCricket();
+  document.getElementById('undo').disabled=history.length===0||botBusy;
+}
+function buildTurnbar(extraMeta){
+  const cur=state.players[state.current], w=win(), turnOver=state.darts>=3;
+  const bot=!!cur.isBot;
+  const tb=document.getElementById('turnbar');
+  tb.innerHTML=`
+    <div class="turn-who">${bot?'🤖':'🎯'} <b>${escapeHtml(cur.name)}</b></div>
+    <div class="turn-meta">Ronde ${state.round} · pijl ${Math.min(state.darts+1,3)}/3${bot&&!w?' — aan het gooien…':''}${extraMeta||''}</div>
+    <button class="btn ghost" id="missBtn" ${turnOver||w||bot?'disabled':''}>Mis</button>
+    <button class="btn gold ${(turnOver||state.bust)&&!w&&!bot?'nextpulse':''}" id="nextBtn" ${bot?'disabled':''}>Volgende speler ▸</button>`;
+  const mb=document.getElementById('missBtn'),nb=document.getElementById('nextBtn');
+  if(!bot){mb.onclick=miss;nb.onclick=nextTurn;}
+  return {w,turnOver,bot};
+}
+function renderCricket(){
+  document.getElementById('cricketBoard').classList.remove('hidden');
+  document.getElementById('x01Panel').classList.add('hidden');
+  document.getElementById('gameHint').innerHTML='Het is de beurt aan de gemarkeerde speler — tik in zijn kolom op een getal. Eén tik = 1 raak (/), twee = X, drie = ⊗ (gesloten). Zet eerst Dubbel/Triple als één pijl er meer telt. Mis = pijl zonder score. Lijn bij iedereen uit = doorstreept en dood.';
+
+  const {w,turnOver,bot}=buildTurnbar();
+  const maxPts=Math.max(0,...state.players.map(p=>p.points));
+  document.getElementById('headRow').innerHTML='<th class="col-num"></th>'+state.players.map((p,i)=>{
+    const lead=p.points>0&&p.points===maxPts?' lead':'';
+    const cc=i===state.current?' class="curcol"':'';
+    return `<th${cc}><div class="pname">${escapeHtml(p.name)}</div><div class="pscore${lead}">${p.points}</div></th>`;
+  }).join('');
+  document.getElementById('bodyRows').innerHTML=NUMS.map(n=>{
+    const dead=rowDead(n);
+    const numCell=n===25?`<td class="col-num"><span class="bulllbl">BULL</span></td>`:`<td class="col-num">${n}</td>`;
+    const cells=state.players.map((p,i)=>{
+      const c=p.marks[n], closed=c>=3?' closed':'';
+      const live=(i===state.current&&!dead&&!turnOver&&!w&&!bot);
+      const cls=live?' live':(i===state.current?'':' dim');
+      return `<td class="cell${closed}${cls}" data-n="${n}" data-live="${live?1:0}">${markHTML(c)}</td>`;
+    }).join('');
+    return `<tr class="${dead?'dead':''}">${numCell}${cells}</tr>`;
+  }).join('');
+  document.querySelectorAll('#bodyRows td.cell').forEach(td=>{if(td.dataset.live==='1')td.onclick=()=>addHit(Number(td.dataset.n),mult);});
+
+  const box=document.getElementById('winnerBox');
+  if(w){
+    box.innerHTML=`<div class="winner"><h2>🏆 ${escapeHtml(w.name)} wint!</h2>
+      <p>Alle getallen gesloten met ${w.points} punten.</p>
+      <button class="btn gold" id="saveResult" ${state.saved?'disabled':''}>${state.saved?'✓ Bewaard in scorebord':'📊 Bewaar resultaat in scorebord'}</button></div>`;
+    const sr=document.getElementById('saveResult');if(sr&&!state.saved)sr.onclick=()=>{saveResult();render();};
+  }else box.innerHTML='';
+}
+function renderX01(){
+  document.getElementById('cricketBoard').classList.add('hidden');
+  document.getElementById('x01Panel').classList.remove('hidden');
+  document.getElementById('gameHint').innerHTML=`Tik het geraakte getal — de score wordt afgetrokken. Kies eerst Dubbel/Triple indien nodig. Bull = ×1 → 25, ×2 → 50. Mis = pijl zonder score. ${state.doubleOut?'<b>Dubbel uit staat aan:</b> je moet finishen op een dubbel (of bull 50); ':''}onder nul${state.doubleOut?' of resterend 1':''} = bust en je score gaat terug naar het begin van de beurt.`;
+
+  const cur=state.players[state.current];
+  const turnScore=state.bust?null:(state.turnStart-cur.score);
+  const logStr=state.dartsLog.length?state.dartsLog.join(' '):'—';
+  const meta=` · deze beurt: ${state.bust?'<span class="bustmsg">BUST</span>':logStr+(turnScore!=null&&turnScore>0?` (${turnScore})`:'')}`;
+  const {w,turnOver,bot}=buildTurnbar(meta);
+
+  document.getElementById('x01Scores').innerHTML=state.players.map((p,i)=>{
+    const c=i===state.current?' cur':'', done=p.score===0?' done':'';
+    return `<div class="x01-card${c}${done}"><div class="nm">${escapeHtml(p.name)}</div>
+      <div class="rem">${p.score}</div><div class="info">pijlen: ${p.dartsUsed}</div></div>`;
+  }).join('');
+
+  const dis=(turnOver||state.bust||w||bot)?'disabled':'';
+  let pad='';for(let n=1;n<=20;n++)pad+=`<button data-num="${n}" ${dis}>${n}</button>`;
+  pad+=`<button class="bull" data-num="25" ${dis}>Bull &nbsp;(×1 = 25 · ×2 = 50)</button>`;
+  const padEl=document.getElementById('x01Pad');padEl.innerHTML=pad;
+  if(!dis)padEl.querySelectorAll('button').forEach(b=>b.onclick=()=>addDartX01(Number(b.dataset.num)));
+
+  const box=document.getElementById('winnerBox');
+  if(w){
+    box.innerHTML=`<div class="winner"><h2>🏆 ${escapeHtml(w.name)} wint!</h2>
+      <p>${state.target} uitgegooid in ${w.dartsUsed} pijlen.</p>
+      <button class="btn gold" id="saveResult" ${state.saved?'disabled':''}>${state.saved?'✓ Bewaard in scorebord':'📊 Bewaar resultaat in scorebord'}</button></div>`;
+    const sr=document.getElementById('saveResult');if(sr&&!state.saved)sr.onclick=()=>{saveResult();render();};
+  }else box.innerHTML='';
+}
+
+/* ---------- dobbelstenen ---------- */
+const PIPS={1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]};
+function dieHTML(val){let c='';for(let i=1;i<=9;i++)c+=`<span class="pip${val&&PIPS[val].includes(i)?' on':''}"></span>`;return c;}
+function ranks(){
+  const v=dice.vals;
+  const order=v.map((val,i)=>({i,val})).filter(o=>o.val>0).sort((a,b)=>b.val-a.val);
+  const counts={};v.forEach(val=>{if(val>0)counts[val]=(counts[val]||0)+1;});
+  const ties=new Set();v.forEach((val,i)=>{if(val>0&&counts[val]>1)ties.add(i);});
+  return{order,ties};
+}
+function renderDice(){
+  const{order,ties}=dice.vals.some(x=>x>0)?ranks():{order:[],ties:new Set()};
+  const rankOf={};order.forEach((o,idx)=>rankOf[o.i]=idx+1);
+  document.getElementById('diceGrid').innerHTML=dice.names.map((nm,i)=>{
+    const val=dice.vals[i], tie=ties.has(i)?' tie':'';
+    const rank=val>0&&!ties.has(i)?(rankOf[i]+'e'):(val>0?'—':'');
+    return `<div class="dice-row${tie}"><span class="dice-rank">${rank}</span>
+      <span class="dice-name">${escapeHtml(nm)}</span>
+      <div class="die${val?'':' empty'}" data-i="${i}">${dieHTML(val||0)}</div></div>`;
+  }).join('');
+  document.querySelectorAll('#diceGrid .die').forEach(d=>d.onclick=()=>rollOne(Number(d.dataset.i)));
+  const allRolled=dice.vals.every(v=>v>0), noTies=ties.size===0;
+  const msg=document.getElementById('diceMsg');
+  if(!allRolled){msg.textContent='Gooi voor iedereen of tik op een dobbelsteen.';msg.classList.remove('warn');}
+  else if(!noTies){msg.textContent='Gelijkspel! Laat de gelijke spelers opnieuw gooien.';msg.classList.add('warn');}
+  else{msg.textContent='Volgorde bepaald — hoogste worp begint. Bevestig om te starten.';msg.classList.remove('warn');}
+  document.getElementById('confirmOrder').disabled=!(allRolled&&noTies);
+}
+function animateDie(i,final,cb){
+  const el=document.querySelector(`#diceGrid .die[data-i="${i}"]`);
+  if(!el){dice.vals[i]=final;renderDice();if(cb)cb();return;}
+  el.classList.remove('empty');el.classList.add('rolling');
+  let n=0;const iv=setInterval(()=>{el.innerHTML=dieHTML(1+Math.floor(Math.random()*6));if(++n>7){clearInterval(iv);el.classList.remove('rolling');dice.vals[i]=final;renderDice();if(cb)cb();}},55);
+}
+function rollOne(i){animateDie(i,1+Math.floor(Math.random()*6));}
+function rollAll(){let done=0,tot=dice.names.length;dice.names.forEach((_,i)=>animateDie(i,1+Math.floor(Math.random()*6),()=>{if(++done===tot)renderDice();}));}
+function confirmOrder(){
+  const{order}=ranks();
+  const seats=order.map(o=>({name:dice.names[o.i],bot:!!(dice.isBot&&dice.isBot[o.i]),skill:dice.skill}));
+  if(setupMode==='cricket'){
+    state={mode:'cricket',started:true,
+      players:seats.map(s=>{const pl=freshCricket(s.name);pl.isBot=s.bot;pl.skill=s.skill;return pl;}),
+      current:0,darts:0,round:1,saved:false};
+  }else{
+    const target=Number(setupMode);
+    state={mode:'x01',target,doubleOut:setupDoubleOut,started:true,
+      players:seats.map(s=>({name:s.name,score:target,dartsUsed:0,isBot:s.bot,skill:s.skill})),
+      current:0,darts:0,round:1,saved:false,turnStart:target,bust:false,dartsLog:[]};
+  }
+  history=[];mult=1;save();showGame();
+}
+
+/* ---------- scorebord / historiek ---------- */
+function saveResult(){
+  const w=win();
+  const rec={ts:Date.now(),mode:state.mode,
+    date:new Date().toLocaleString('nl-BE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}),
+    winner:w?w.name:null};
+  if(state.mode==='cricket')rec.results=state.players.map(p=>({name:p.name,points:p.points}));
+  else{rec.target=state.target;rec.results=state.players.map(p=>({name:p.name,darts:p.dartsUsed,remaining:p.score,won:p.score===0}));}
+  games.push(rec);state.saved=true;saveGames();save();
+}
+function filteredGames(){
+  return games.filter(g=>{
+    if(histFilter==='all')return true;
+    if(histFilter==='cricket')return g.mode==='cricket';
+    if(histFilter==='501')return g.mode==='x01'&&g.target===501;
+    if(histFilter==='201')return g.mode==='x01'&&g.target===201;
+    return true;
+  });
+}
+function renderHistory(){
+  document.querySelectorAll('#histFilter button').forEach(b=>b.classList.toggle('active',b.dataset.f===histFilter));
+  const gs=filteredGames();
+  const isCricket=histFilter==='cricket', isX01=(histFilter==='501'||histFilter==='201');
+
+  // ranglijst
+  const agg={};
+  gs.forEach(g=>g.results.forEach(r=>{
+    const a=agg[r.name]||(agg[r.name]={name:r.name,games:0,wins:0,points:0,best:0,darts:0,bestDarts:Infinity});
+    a.games++;if(g.winner===r.name)a.wins++;
+    if(g.mode==='cricket'){a.points+=r.points||0;if((r.points||0)>a.best)a.best=r.points||0;}
+    else{a.darts+=r.darts||0;if(g.winner===r.name&&(r.darts||0)<a.bestDarts)a.bestDarts=r.darts;}
+  }));
+  let rows=Object.values(agg);
+  const lt=document.getElementById('leadTable');
+  if(rows.length===0){lt.innerHTML='<p class="empty-note">Nog geen spellen in deze categorie. Sluit een spel af en bewaar het resultaat.</p>';}
+  else if(isCricket){
+    rows.sort((a,b)=>b.wins-a.wins||b.points-a.points);
+    lt.innerHTML=`<table class="lead"><thead><tr><th>Speler</th><th>Spellen</th><th>Gewonnen</th><th>Totaal ptn</th><th>Beste</th><th>Gem.</th></tr></thead><tbody>`+
+      rows.map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${r.games}</td><td class="${r.wins?'win':''}">${r.wins}</td><td>${r.points}</td><td>${r.best}</td><td>${(r.points/r.games).toFixed(1)}</td></tr>`).join('')+`</tbody></table>`;
+  }else if(isX01){
+    rows.sort((a,b)=>b.wins-a.wins||a.bestDarts-b.bestDarts);
+    lt.innerHTML=`<table class="lead"><thead><tr><th>Speler</th><th>Spellen</th><th>Gewonnen</th><th>Beste finish</th><th>Gem. pijlen</th></tr></thead><tbody>`+
+      rows.map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${r.games}</td><td class="${r.wins?'win':''}">${r.wins}</td><td>${isFinite(r.bestDarts)?r.bestDarts+' p':'—'}</td><td>${(r.darts/r.games).toFixed(1)}</td></tr>`).join('')+`</tbody></table>`;
+  }else{
+    rows.sort((a,b)=>b.wins-a.wins||b.games-a.games);
+    lt.innerHTML=`<table class="lead"><thead><tr><th>Speler</th><th>Spellen</th><th>Gewonnen</th></tr></thead><tbody>`+
+      rows.map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${r.games}</td><td class="${r.wins?'win':''}">${r.wins}</td></tr>`).join('')+`</tbody></table>`;
+  }
+
+  document.getElementById('chartArea').innerHTML=buildChart(gs);
+
+  // gespeelde spellen
+  const gl=document.getElementById('gameLog');
+  if(gs.length===0)gl.innerHTML='<p class="empty-note">Geen spellen.</p>';
+  else gl.innerHTML=[...gs].reverse().map((g,idx)=>{
+    const no=gs.length-idx;
+    const mlbl=g.mode==='cricket'?'Cricket':String(g.target);
+    let line;
+    if(g.mode==='cricket')line=g.results.slice().sort((a,b)=>b.points-a.points).map(r=>`${escapeHtml(r.name)} ${r.points}`).join(' · ');
+    else line=g.results.slice().sort((a,b)=>(b.won?1:0)-(a.won?1:0)||a.remaining-b.remaining).map(r=>`${escapeHtml(r.name)} ${r.won?'✓':r.remaining} (${r.darts}p)`).join(' · ');
+    return `<div class="glog"><div class="gdate"><span class="badge">${mlbl}</span>${no}. ${g.date}</div>
+      <div>🏆 <b>${g.winner?escapeHtml(g.winner):'—'}</b> &nbsp; ${line}</div></div>`;
+  }).join('');
+}
+function buildChart(gs){
+  if(gs.length===0)return '<p class="empty-note">Verschijnt zodra er spellen bewaard zijn.</p>';
+  const names=[];gs.forEach(g=>g.results.forEach(r=>{if(!names.includes(r.name))names.push(r.name);}));
+  let label,getVal;
+  if(histFilter==='cricket'){label='Punten per spel';getVal=(g,nm)=>{const r=g.results.find(x=>x.name===nm);return r?(r.points||0):null;};}
+  else if(histFilter==='501'||histFilter==='201'){label='Pijlen per spel (lager = beter)';getVal=(g,nm)=>{const r=g.results.find(x=>x.name===nm);return r?(r.darts||0):null;};}
+  else{
+    label='Overwinningen (cumulatief)';
+    const cum={};names.forEach(nm=>cum[nm]=0);
+    const matrix=gs.map(g=>{names.forEach(nm=>{if(g.winner===nm)cum[nm]++;});const row={};names.forEach(nm=>row[nm]=cum[nm]);return row;});
+    getVal=(g,nm,gi)=>matrix[gi][nm];
+  }
+  const W=600,H=270,PADL=42,PADB=28,PADT=14,PADR=12,n=gs.length;
+  let maxV=1;names.forEach(nm=>gs.forEach((g,gi)=>{const v=getVal(g,nm,gi);if(v!=null&&v>maxV)maxV=v;}));
+  const x=k=>PADL+(n<=1?(W-PADL-PADR)/2:(k/(n-1))*(W-PADL-PADR));
+  const y=v=>H-PADB-(v/maxV)*(H-PADB-PADT);
+  let svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" font-family="inherit">`;
+  for(let t=0;t<=4;t++){const val=Math.round(maxV*t/4),yy=y(val);
+    svg+=`<line x1="${PADL}" y1="${yy}" x2="${W-PADR}" y2="${yy}" stroke="rgba(243,239,226,.12)"/>`;
+    svg+=`<text x="${PADL-6}" y="${yy+4}" fill="#bdb8a6" font-size="11" text-anchor="end">${val}</text>`;}
+  for(let k=0;k<n;k++)svg+=`<text x="${x(k)}" y="${H-8}" fill="#bdb8a6" font-size="11" text-anchor="middle">${k+1}</text>`;
+  names.forEach((nm,idx)=>{
+    const col=PALETTE[idx%PALETTE.length], pts=[];
+    gs.forEach((g,k)=>{const v=getVal(g,nm,k);if(v!=null)pts.push([x(k),y(v)]);});
+    if(pts.length>1)svg+=`<polyline fill="none" stroke="${col}" stroke-width="2.5" points="${pts.map(p=>p.join(',')).join(' ')}"/>`;
+    pts.forEach(p=>svg+=`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="${col}"/>`);
+  });
+  svg+=`</svg>`;
+  const legend=`<div class="legend">`+names.map((nm,idx)=>`<span><i style="background:${PALETTE[idx%PALETTE.length]}"></i>${escapeHtml(nm)}</span>`).join('')+`</div>`;
+  return `<div class="chartwrap"><p class="charttitle">${label}</p>${svg}${legend}</div>`;
+}
+
+/* ---------- setup ---------- */
+function renderSetup(names){
+  const wrap=document.getElementById('playersSetup');
+  wrap.innerHTML=names.map((nm,i)=>`<div class="prow"><span class="num">${i+1}</span>
+    <input type="text" value="${escapeHtml(nm)}" placeholder="Naam speler ${i+1}">
+    <button class="btn-x" title="Verwijder">✕</button></div>`).join('');
+  wrap.querySelectorAll('.btn-x').forEach((b,idx)=>b.onclick=()=>{const c=getNames();c.splice(idx,1);renderSetup(c.length?c:['','']);});
+}
+function getNames(){return[...document.querySelectorAll('#playersSetup input')].map(i=>i.value);}
+function applyModeUI(){
+  document.querySelectorAll('#modeSel button').forEach(x=>x.classList.toggle('active',x.dataset.mode===setupMode));
+  document.getElementById('optDoubleOut').classList.toggle('hidden',setupMode==='cricket');
+  document.getElementById('doubleOut').checked=setupDoubleOut;
+  document.getElementById('vsBot').checked=setupVsBot;
+  document.getElementById('optSkill').classList.toggle('hidden',!setupVsBot);
+  document.getElementById('skillRange').value=setupSkill;
+  document.getElementById('skillVal').textContent=setupSkill;
+}
+
+/* ---------- navigatie ---------- */
+function hide(...ids){ids.forEach(id=>document.getElementById(id).classList.add('hidden'));}
+function show1(id){document.getElementById(id).classList.remove('hidden');}
+function showSetup(prefill){hide('dice','game','history');show1('setup');renderSetup(prefill&&prefill.length?prefill:['','']);applyModeUI();}
+function showDice(){
+  let names=getNames().map(s=>s.trim()).filter(Boolean);
+  setupDoubleOut=document.getElementById('doubleOut').checked;
+  setupVsBot=document.getElementById('vsBot').checked;
+  setupSkill=Number(document.getElementById('skillRange').value);
+  const minHumans=setupVsBot?1:2;
+  if(names.length<minHumans){alert(setupVsBot?"Voeg minstens 1 speler toe.":"Voeg minstens 2 spelers toe.");return;}
+  const isBot=names.map(()=>false);
+  if(setupVsBot){names=names.concat(["🤖 Robot"]);isBot.push(true);}
+  dice={names,isBot,skill:setupSkill,vals:names.map(()=>0)};
+  hide('setup','game','history');show1('dice');renderDice();
+}
+function showGame(){hide('setup','dice','history');show1('game');render();botTurnIfNeeded();}
+function showHistory(){loadGames();hide('setup','dice','game');show1('history');renderHistory();}
+
+/* ---------- knoppen ---------- */
+document.querySelectorAll('#modeSel button').forEach(b=>b.onclick=()=>{
+  setupMode=b.dataset.mode;applyModeUI();
+});
+document.getElementById('vsBot').onchange=e=>{setupVsBot=e.target.checked;applyModeUI();};
+document.getElementById('skillRange').oninput=e=>{setupSkill=Number(e.target.value);document.getElementById('skillVal').textContent=setupSkill;};
+document.getElementById('addPlayer').onclick=()=>{const c=getNames();c.push('');renderSetup(c);};
+document.getElementById('toDice').onclick=showDice;
+document.getElementById('toHistory1').onclick=showHistory;
+document.getElementById('rollAll').onclick=rollAll;
+document.getElementById('confirmOrder').onclick=confirmOrder;
+document.getElementById('backToSetup').onclick=()=>showSetup(dice?dice.names:['','']);
+document.querySelectorAll('.mult').forEach(b=>b.onclick=()=>{mult=Number(b.dataset.m);save();render();});
+document.getElementById('undo').onclick=()=>{if(!history.length)return;state=JSON.parse(history.pop());save();render();};
+document.getElementById('toHistory2').onclick=showHistory;
+document.getElementById('newGame').onclick=()=>{
+  if(state&&!state.saved){
+    const prog=state.mode==='cricket'?state.players.some(p=>p.points>0||NUMS.some(n=>p.marks[n]>0)):state.players.some(p=>p.score!==state.target);
+    if(prog&&confirm("Resultaat eerst bewaren in het scorebord?"))saveResult();
+  }
+  if(state){setupMode=state.mode==='x01'?String(state.target):'cricket';setupDoubleOut=!!state.doubleOut;}
+  const players=state?state.players:[];
+  const bot=players.find(p=>p.isBot);
+  setupVsBot=!!bot; if(bot)setupSkill=bot.skill||5;
+  const names=players.length?players.map(p=>p.name):['',''];
+  const isBot=players.length?players.map(p=>!!p.isBot):[false,false];
+  dice={names,isBot,skill:setupSkill,vals:names.map(()=>0)};
+  hide('setup','game','history');show1('dice');renderDice();
+};
+document.getElementById('quitGame').onclick=()=>{
+  if(state&&!state.saved){
+    const prog=state.mode==='cricket'?state.players.some(p=>p.points>0||NUMS.some(n=>p.marks[n]>0)):state.players.some(p=>p.score!==state.target);
+    if(prog&&confirm("Resultaat eerst bewaren in het scorebord?"))saveResult();
+  }
+  if(state){setupMode=state.mode==='x01'?String(state.target):'cricket';setupDoubleOut=!!state.doubleOut;}
+  const players=state?state.players:[];
+  const bot=players.find(p=>p.isBot);
+  setupVsBot=!!bot; if(bot)setupSkill=bot.skill||5;
+  const names=players.filter(p=>!p.isBot).map(p=>p.name);
+  state=null;save();showSetup(names.length?names:['','']);
+};
+document.querySelectorAll('#histFilter button').forEach(b=>b.onclick=()=>{histFilter=b.dataset.f;renderHistory();});
+document.getElementById('backFromHistory').onclick=()=>{if(state&&state.started)showGame();else showSetup(['','']);};
+document.getElementById('clearHistory').onclick=()=>{if(confirm("Hele historiek wissen?")){games=[];saveGames();renderHistory();}};
+
+/* ---------- back-up: export / import ---------- */
+function backupMsg(t){const el=document.getElementById('backupMsg');if(el)el.textContent=t||'';}
+function buildBackup(){
+  return JSON.stringify({app:"darts-scorebord",version:3,exportedAt:new Date().toISOString(),games,state,mult},null,2);
+}
+function doExport(){
+  const txt=buildBackup();
+  document.getElementById('backupText').value=txt;
+  // probeer ook een bestand te downloaden (lukt niet overal op iOS — dan blijft de tekst over om te kopiëren)
+  try{
+    const blob=new Blob([txt],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const d=new Date(),pad=n=>String(n).padStart(2,'0');
+    a.href=url;a.download=`darts-backup-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.json`;
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1500);
+  }catch(e){}
+  backupMsg(`Klaar: ${games.length} spel(len)${state?' + lopend spel':''}. Lukt downloaden niet, kopieer dan de tekst hieronder.`);
+}
+function copyBackup(){
+  const ta=document.getElementById('backupText');
+  if(!ta.value)ta.value=buildBackup();
+  ta.focus();ta.select();ta.setSelectionRange(0,ta.value.length);
+  let ok=false;
+  try{ok=document.execCommand('copy');}catch(e){}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(ta.value).then(()=>backupMsg('Tekst gekopieerd. Plak en bewaar ze bv. in Notities.')).catch(()=>{});}
+  backupMsg(ok?'Tekst gekopieerd. Plak en bewaar ze bv. in Notities.':'Selecteer de tekst en kopieer ze handmatig (lang indrukken → Kopieer).');
+}
+function importData(txt){
+  let d;
+  try{d=JSON.parse(txt);}catch(e){backupMsg('Kon de tekst niet lezen — is het wel een volledige back-up?');return;}
+  if(!d||!Array.isArray(d.games)){backupMsg('Dit lijkt geen darts-back-up te zijn.');return;}
+  games=d.games;saveGames();
+  let extra='';
+  if(d.state){state=d.state;mult=d.mult||1;save();extra=' + lopend spel';}
+  histFilter='all';renderHistory();
+  backupMsg(`Geïmporteerd: ${games.length} spel(len)${extra}. ${d.state?'Tik op "◂ Terug" om verder te spelen.':''}`);
+}
+document.getElementById('doExport').onclick=doExport;
+document.getElementById('copyBackup').onclick=copyBackup;
+document.getElementById('importTextBtn').onclick=()=>{
+  const v=document.getElementById('backupText').value.trim();
+  if(!v){backupMsg('Plak eerst je back-uptekst in het vak.');return;}
+  importData(v);
+};
+document.getElementById('pickImportFile').onclick=()=>document.getElementById('importFileInput').click();
+document.getElementById('importFileInput').onchange=e=>{
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{document.getElementById('backupText').value=r.result;importData(String(r.result));};
+  r.onerror=()=>backupMsg('Kon het bestand niet lezen.');
+  r.readAsText(f);
+  e.target.value='';
+};
+
+/* ---------- init ---------- */
+loadGames();
+if(load()&&state&&state.started){showGame();}else{showSetup(['','']);}
+</script>
+</body>
+</html>
