@@ -2,8 +2,14 @@
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Darts — Scorebord</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Darts">
+<meta name="theme-color" content="#10302a">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='38' fill='%2310302a'/%3E%3Ccircle cx='90' cy='90' r='62' fill='none' stroke='%23d9b25a' stroke-width='8'/%3E%3Ccircle cx='90' cy='90' r='30' fill='none' stroke='%23c2392f' stroke-width='8'/%3E%3Ccircle cx='90' cy='90' r='9' fill='%233f8f5e'/%3E%3C/svg%3E">
 <style>
   :root{
     --board:#10302a;--board2:#0b2520;--chalk:#f3efe2;--chalk-dim:#bdb8a6;
@@ -15,7 +21,9 @@
   html,body{margin:0;padding:0;}
   body{font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     background:radial-gradient(120% 80% at 50% -10%, #18443a 0%, var(--board) 45%, var(--board2) 100%);
-    color:var(--chalk);min-height:100vh;padding:18px 14px 60px;}
+    color:var(--chalk);min-height:100vh;padding:18px 14px 60px;
+    padding-top:max(18px,env(safe-area-inset-top));
+    padding-bottom:max(60px,env(safe-area-inset-bottom));}
   h1{font-family:"Arial Black","Segoe UI",sans-serif;letter-spacing:1px;font-size:1.7rem;margin:0 0 2px;text-transform:uppercase;}
   h1 .pip{color:var(--red);} h1 .pip2{color:var(--green);}
   .sub{color:var(--chalk-dim);font-size:.82rem;margin:0 0 18px;}
@@ -168,6 +176,13 @@
     <div class="opt-row hidden" id="optDoubleOut">
       <input type="checkbox" id="doubleOut"><label for="doubleOut">Dubbel uit (finishen op een dubbel)</label>
     </div>
+    <div class="opt-row" id="optBot">
+      <input type="checkbox" id="vsBot"><label for="vsBot">Speel tegen de robot 🤖</label>
+    </div>
+    <div class="opt-row hidden" id="optSkill">
+      <label style="flex:1;">Niveau robot: <b id="skillVal" style="color:var(--gold);">5</b> / 10</label>
+      <input type="range" id="skillRange" min="0" max="10" value="5" style="flex:1;accent-color:var(--gold);">
+    </div>
     <div class="players-setup" id="playersSetup"></div>
     <div class="setup-actions">
       <button class="btn ghost" id="addPlayer">+ Speler</button>
@@ -261,6 +276,7 @@ const PALETTE=["#d9b25a","#3f8f5e","#c2392f","#5b9bd5","#b06fd0","#e0843a","#46b
 
 let state=null, mult=1, history=[], dice=null, games=[];
 let setupMode="cricket", setupDoubleOut=false, histFilter="all";
+let setupVsBot=false, setupSkill=5, botBusy=false;
 
 /* ---------- opslag ---------- */
 function save(){try{localStorage.setItem(STORE,JSON.stringify({state,mult}));}catch(e){}}
@@ -279,7 +295,7 @@ function nextTurn(){
   state.current=(state.current+1)%state.players.length;
   if(state.current===0)state.round++;
   if(state.mode==='x01'){state.turnStart=state.players[state.current].score;state.bust=false;state.dartsLog=[];}
-  save();render();
+  save();render();botTurnIfNeeded();
 }
 function miss(){
   if(state.darts>=3||state.bust||win())return;
@@ -316,19 +332,68 @@ function labelDart(num,m,val){
   if(num===25)return val===50?'Bull50':'25';
   return (m===2?'D':m===3?'T':'')+num;
 }
-function addDartX01(num){
+function applyX01Dart(val,isDouble,label){
   if(state.darts>=3||state.bust||win())return;
-  snap();const p=state.players[state.current];const m=mult;
-  let val=(num===25)?(m>=2?50:25):num*m;
-  p.dartsUsed++;state.dartsLog.push(labelDart(num,m,val));
+  snap();const p=state.players[state.current];
+  p.dartsUsed++;state.dartsLog.push(label);
   const after=p.score-val, dOut=state.doubleOut;
   let bust=false;
   if(after<0)bust=true;
   else if(dOut&&after===1)bust=true;
-  else if(dOut&&after===0){const isDbl=num===25?val===50:m===2;if(!isDbl)bust=true;}
+  else if(dOut&&after===0&&!isDouble)bust=true;
   if(bust){state.bust=true;p.score=state.turnStart;state.darts=3;}
   else{p.score=after;useDart();}
-  mult=1;save();render();
+  save();render();
+}
+function addDartX01(num){
+  const m=mult;
+  const val=(num===25)?(m>=2?50:25):num*m;
+  const isDbl=num===25?val===50:m===2;
+  applyX01Dart(val,isDbl,labelDart(num,m,val));
+  mult=1;
+}
+
+/* ---------- robot ---------- */
+function botTurnIfNeeded(){
+  const p=state&&state.players[state.current];
+  if(botBusy||!p||!p.isBot||win())return;
+  botBusy=true;
+  setTimeout(botDartStep,650);
+}
+function botDartStep(){
+  if(win()){botBusy=false;render();return;}
+  if(state.darts>=3||(state.mode==='x01'&&state.bust)){
+    setTimeout(()=>{botBusy=false;nextTurn();},750);
+    return;
+  }
+  botThrowOne();
+  setTimeout(botDartStep,750);
+}
+function botThrowOne(){
+  const p=state.players[state.current];
+  const pHit=Math.max(0,Math.min(10,p.skill||0))/10;
+  if(state.mode!=='x01'){
+    let target=null;
+    for(const n of NUMS){if(p.marks[n]<3){target=n;break;}}        // eerst sluiten, hoog naar laag
+    if(target===null)for(const n of NUMS){if(someoneOpen(n,state.current)){target=n;break;}} // anders punten
+    if(target===null){miss();return;}
+    if(Math.random()<pHit){mult=1;addHit(target,1);}else{miss();}
+    return;
+  }
+  // x01
+  if(Math.random()>=pHit){applyX01Dart(0,false,'mis');return;}
+  const R=p.score,dOut=state.doubleOut;
+  let val,isDbl=false,label;
+  if(R>60){
+    val=(dOut&&R<=100)?(R-40):60;       // dubbel uit: zet 40 klaar; anders T20
+    label=String(val);
+  }else if(!dOut){
+    val=R;isDbl=true;label=R+' uit';     // straight: gooi exact uit
+  }else if(R===50){val=50;isDbl=true;label='Bull';}
+  else if(R<=40&&R%2===0){val=R;isDbl=true;label='D'+(R/2);}
+  else if(R>40){val=R-40;label=String(val);}     // 41..60 oneven/onfinishbaar → zet 40 klaar
+  else{val=(R>=3)?1:0;label=val?'1':'mis';}       // klein oneven → laat even getal staan
+  applyX01Dart(val,isDbl,label);
 }
 
 /* ---------- render ---------- */
@@ -336,26 +401,27 @@ function markHTML(c){let h='<div class="marks">';if(c>=1)h+='<span class="bar fw
 function render(){
   document.querySelectorAll('.mult').forEach(b=>b.classList.toggle('active',Number(b.dataset.m)===mult));
   if(state.mode==='x01')renderX01();else renderCricket();
-  document.getElementById('undo').disabled=history.length===0;
+  document.getElementById('undo').disabled=history.length===0||botBusy;
 }
 function buildTurnbar(extraMeta){
   const cur=state.players[state.current], w=win(), turnOver=state.darts>=3;
+  const bot=!!cur.isBot;
   const tb=document.getElementById('turnbar');
   tb.innerHTML=`
-    <div class="turn-who">🎯 <b>${escapeHtml(cur.name)}</b></div>
-    <div class="turn-meta">Ronde ${state.round} · pijl ${Math.min(state.darts+1,3)}/3${extraMeta||''}</div>
-    <button class="btn ghost" id="missBtn" ${turnOver||w?'disabled':''}>Mis</button>
-    <button class="btn gold ${(turnOver||state.bust)&&!w?'nextpulse':''}" id="nextBtn">Volgende speler ▸</button>`;
-  document.getElementById('missBtn').onclick=miss;
-  document.getElementById('nextBtn').onclick=nextTurn;
-  return {w,turnOver};
+    <div class="turn-who">${bot?'🤖':'🎯'} <b>${escapeHtml(cur.name)}</b></div>
+    <div class="turn-meta">Ronde ${state.round} · pijl ${Math.min(state.darts+1,3)}/3${bot&&!w?' — aan het gooien…':''}${extraMeta||''}</div>
+    <button class="btn ghost" id="missBtn" ${turnOver||w||bot?'disabled':''}>Mis</button>
+    <button class="btn gold ${(turnOver||state.bust)&&!w&&!bot?'nextpulse':''}" id="nextBtn" ${bot?'disabled':''}>Volgende speler ▸</button>`;
+  const mb=document.getElementById('missBtn'),nb=document.getElementById('nextBtn');
+  if(!bot){mb.onclick=miss;nb.onclick=nextTurn;}
+  return {w,turnOver,bot};
 }
 function renderCricket(){
   document.getElementById('cricketBoard').classList.remove('hidden');
   document.getElementById('x01Panel').classList.add('hidden');
   document.getElementById('gameHint').innerHTML='Het is de beurt aan de gemarkeerde speler — tik in zijn kolom op een getal. Eén tik = 1 raak (/), twee = X, drie = ⊗ (gesloten). Zet eerst Dubbel/Triple als één pijl er meer telt. Mis = pijl zonder score. Lijn bij iedereen uit = doorstreept en dood.';
 
-  const {w,turnOver}=buildTurnbar();
+  const {w,turnOver,bot}=buildTurnbar();
   const maxPts=Math.max(0,...state.players.map(p=>p.points));
   document.getElementById('headRow').innerHTML='<th class="col-num"></th>'+state.players.map((p,i)=>{
     const lead=p.points>0&&p.points===maxPts?' lead':'';
@@ -367,7 +433,7 @@ function renderCricket(){
     const numCell=n===25?`<td class="col-num"><span class="bulllbl">BULL</span></td>`:`<td class="col-num">${n}</td>`;
     const cells=state.players.map((p,i)=>{
       const c=p.marks[n], closed=c>=3?' closed':'';
-      const live=(i===state.current&&!dead&&!turnOver&&!w);
+      const live=(i===state.current&&!dead&&!turnOver&&!w&&!bot);
       const cls=live?' live':(i===state.current?'':' dim');
       return `<td class="cell${closed}${cls}" data-n="${n}" data-live="${live?1:0}">${markHTML(c)}</td>`;
     }).join('');
@@ -392,7 +458,7 @@ function renderX01(){
   const turnScore=state.bust?null:(state.turnStart-cur.score);
   const logStr=state.dartsLog.length?state.dartsLog.join(' '):'—';
   const meta=` · deze beurt: ${state.bust?'<span class="bustmsg">BUST</span>':logStr+(turnScore!=null&&turnScore>0?` (${turnScore})`:'')}`;
-  const {w,turnOver}=buildTurnbar(meta);
+  const {w,turnOver,bot}=buildTurnbar(meta);
 
   document.getElementById('x01Scores').innerHTML=state.players.map((p,i)=>{
     const c=i===state.current?' cur':'', done=p.score===0?' done':'';
@@ -400,7 +466,7 @@ function renderX01(){
       <div class="rem">${p.score}</div><div class="info">pijlen: ${p.dartsUsed}</div></div>`;
   }).join('');
 
-  const dis=(turnOver||state.bust||w)?'disabled':'';
+  const dis=(turnOver||state.bust||w||bot)?'disabled':'';
   let pad='';for(let n=1;n<=20;n++)pad+=`<button data-num="${n}" ${dis}>${n}</button>`;
   pad+=`<button class="bull" data-num="25" ${dis}>Bull &nbsp;(×1 = 25 · ×2 = 50)</button>`;
   const padEl=document.getElementById('x01Pad');padEl.innerHTML=pad;
@@ -453,13 +519,15 @@ function rollOne(i){animateDie(i,1+Math.floor(Math.random()*6));}
 function rollAll(){let done=0,tot=dice.names.length;dice.names.forEach((_,i)=>animateDie(i,1+Math.floor(Math.random()*6),()=>{if(++done===tot)renderDice();}));}
 function confirmOrder(){
   const{order}=ranks();
-  const names=order.map(o=>dice.names[o.i]);
+  const seats=order.map(o=>({name:dice.names[o.i],bot:!!(dice.isBot&&dice.isBot[o.i]),skill:dice.skill}));
   if(setupMode==='cricket'){
-    state={mode:'cricket',started:true,players:names.map(freshCricket),current:0,darts:0,round:1,saved:false};
+    state={mode:'cricket',started:true,
+      players:seats.map(s=>{const pl=freshCricket(s.name);pl.isBot=s.bot;pl.skill=s.skill;return pl;}),
+      current:0,darts:0,round:1,saved:false};
   }else{
     const target=Number(setupMode);
     state={mode:'x01',target,doubleOut:setupDoubleOut,started:true,
-      players:names.map(nm=>({name:nm,score:target,dartsUsed:0})),
+      players:seats.map(s=>({name:s.name,score:target,dartsUsed:0,isBot:s.bot,skill:s.skill})),
       current:0,darts:0,round:1,saved:false,turnStart:target,bust:false,dartsLog:[]};
   }
   history=[];mult=1;save();showGame();
@@ -574,6 +642,10 @@ function applyModeUI(){
   document.querySelectorAll('#modeSel button').forEach(x=>x.classList.toggle('active',x.dataset.mode===setupMode));
   document.getElementById('optDoubleOut').classList.toggle('hidden',setupMode==='cricket');
   document.getElementById('doubleOut').checked=setupDoubleOut;
+  document.getElementById('vsBot').checked=setupVsBot;
+  document.getElementById('optSkill').classList.toggle('hidden',!setupVsBot);
+  document.getElementById('skillRange').value=setupSkill;
+  document.getElementById('skillVal').textContent=setupSkill;
 }
 
 /* ---------- navigatie ---------- */
@@ -582,18 +654,25 @@ function show1(id){document.getElementById(id).classList.remove('hidden');}
 function showSetup(prefill){hide('dice','game','history');show1('setup');renderSetup(prefill&&prefill.length?prefill:['','']);applyModeUI();}
 function showDice(){
   let names=getNames().map(s=>s.trim()).filter(Boolean);
-  if(names.length<2){alert("Voeg minstens 2 spelers toe.");return;}
   setupDoubleOut=document.getElementById('doubleOut').checked;
-  dice={names,vals:names.map(()=>0)};
+  setupVsBot=document.getElementById('vsBot').checked;
+  setupSkill=Number(document.getElementById('skillRange').value);
+  const minHumans=setupVsBot?1:2;
+  if(names.length<minHumans){alert(setupVsBot?"Voeg minstens 1 speler toe.":"Voeg minstens 2 spelers toe.");return;}
+  const isBot=names.map(()=>false);
+  if(setupVsBot){names=names.concat(["🤖 Robot"]);isBot.push(true);}
+  dice={names,isBot,skill:setupSkill,vals:names.map(()=>0)};
   hide('setup','game','history');show1('dice');renderDice();
 }
-function showGame(){hide('setup','dice','history');show1('game');render();}
+function showGame(){hide('setup','dice','history');show1('game');render();botTurnIfNeeded();}
 function showHistory(){loadGames();hide('setup','dice','game');show1('history');renderHistory();}
 
 /* ---------- knoppen ---------- */
 document.querySelectorAll('#modeSel button').forEach(b=>b.onclick=()=>{
   setupMode=b.dataset.mode;applyModeUI();
 });
+document.getElementById('vsBot').onchange=e=>{setupVsBot=e.target.checked;applyModeUI();};
+document.getElementById('skillRange').oninput=e=>{setupSkill=Number(e.target.value);document.getElementById('skillVal').textContent=setupSkill;};
 document.getElementById('addPlayer').onclick=()=>{const c=getNames();c.push('');renderSetup(c);};
 document.getElementById('toDice').onclick=showDice;
 document.getElementById('toHistory1').onclick=showHistory;
@@ -609,8 +688,12 @@ document.getElementById('newGame').onclick=()=>{
     if(prog&&confirm("Resultaat eerst bewaren in het scorebord?"))saveResult();
   }
   if(state){setupMode=state.mode==='x01'?String(state.target):'cricket';setupDoubleOut=!!state.doubleOut;}
-  const names=state?state.players.map(p=>p.name):['',''];
-  dice={names,vals:names.map(()=>0)};
+  const players=state?state.players:[];
+  const bot=players.find(p=>p.isBot);
+  setupVsBot=!!bot; if(bot)setupSkill=bot.skill||5;
+  const names=players.length?players.map(p=>p.name):['',''];
+  const isBot=players.length?players.map(p=>!!p.isBot):[false,false];
+  dice={names,isBot,skill:setupSkill,vals:names.map(()=>0)};
   hide('setup','game','history');show1('dice');renderDice();
 };
 document.getElementById('quitGame').onclick=()=>{
@@ -619,8 +702,11 @@ document.getElementById('quitGame').onclick=()=>{
     if(prog&&confirm("Resultaat eerst bewaren in het scorebord?"))saveResult();
   }
   if(state){setupMode=state.mode==='x01'?String(state.target):'cricket';setupDoubleOut=!!state.doubleOut;}
-  const names=state?state.players.map(p=>p.name):['',''];
-  state=null;save();showSetup(names);
+  const players=state?state.players:[];
+  const bot=players.find(p=>p.isBot);
+  setupVsBot=!!bot; if(bot)setupSkill=bot.skill||5;
+  const names=players.filter(p=>!p.isBot).map(p=>p.name);
+  state=null;save();showSetup(names.length?names:['','']);
 };
 document.querySelectorAll('#histFilter button').forEach(b=>b.onclick=()=>{histFilter=b.dataset.f;renderHistory();});
 document.getElementById('backFromHistory').onclick=()=>{if(state&&state.started)showGame();else showSetup(['','']);};
