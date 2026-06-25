@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Darts — Scorebord</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Darts">
+<meta name="theme-color" content="#10302a">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='38' fill='%2310302a'/%3E%3Ccircle cx='90' cy='90' r='62' fill='none' stroke='%23d9b25a' stroke-width='8'/%3E%3Ccircle cx='90' cy='90' r='30' fill='none' stroke='%23c2392f' stroke-width='8'/%3E%3Ccircle cx='90' cy='90' r='9' fill='%233f8f5e'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --board:#10302a;--board2:#0b2520;--chalk:#f3efe2;--chalk-dim:#bdb8a6;
+    --red:#c2392f;--green:#3f8f5e;--gold:#d9b25a;
+    --line:rgba(243,239,226,.18);--cell:rgba(243,239,226,.04);
+    --cell-hi:rgba(217,178,90,.14);--dead:rgba(194,57,47,.20);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(120% 80% at 50% -10%, #18443a 0%, var(--board) 45%, var(--board2) 100%);
+    color:var(--chalk);min-height:100vh;padding:18px 14px 60px;
+    padding-top:max(18px,env(safe-area-inset-top));
+    padding-bottom:max(60px,env(safe-area-inset-bottom));}
+  h1{font-family:"Arial Black","Segoe UI",sans-serif;letter-spacing:1px;font-size:1.7rem;margin:0 0 2px;text-transform:uppercase;}
+  h1 .pip{color:var(--red);} h1 .pip2{color:var(--green);}
+  .sub{color:var(--chalk-dim);font-size:.82rem;margin:0 0 18px;}
+  .brand{display:flex;align-items:center;gap:14px;margin-bottom:6px;}
+  .brand-logo{width:66px;height:auto;flex:none;filter:drop-shadow(0 2px 5px rgba(0,0,0,.4));}
+  .brand-txt h1{margin:0;}
+  .brand-txt .sub{margin:2px 0 0;}
+  .wrap{max-width:880px;margin:0 auto;}
+  .card{background:linear-gradient(180deg, rgba(243,239,226,.05), rgba(243,239,226,.02));border:1px solid var(--line);border-radius:14px;padding:18px;}
+
+  .players-setup{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
+  .prow{display:flex;gap:8px;align-items:center;}
+  .prow .num{width:26px;color:var(--gold);font-weight:800;text-align:center;}
+  input[type=text]{flex:1;background:rgba(0,0,0,.22);border:1px solid var(--line);color:var(--chalk);border-radius:9px;padding:11px 12px;font-size:1rem;}
+  input[type=text]:focus{outline:none;border-color:var(--gold);}
+  textarea{width:100%;min-height:96px;margin:10px 0;background:rgba(0,0,0,.22);border:1px solid var(--line);color:var(--chalk);border-radius:9px;padding:10px 12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.78rem;resize:vertical;}
+  textarea:focus{outline:none;border-color:var(--gold);}
+  button{font-family:inherit;cursor:pointer;border:none;}
+  .btn{background:var(--green);color:#06140f;font-weight:800;border-radius:10px;padding:12px 16px;font-size:1rem;letter-spacing:.3px;}
+  .btn:active{transform:translateY(1px);}
+  .btn:disabled{opacity:.4;cursor:default;}
+  .btn.ghost{background:transparent;color:var(--chalk);border:1px solid var(--line);}
+  .btn.red{background:var(--red);color:#fff;}
+  .btn.gold{background:var(--gold);color:#231c0a;}
+  .btn-x{background:transparent;color:var(--red);font-size:1.4rem;padding:4px 10px;font-weight:800;line-height:1;}
+  .setup-actions{display:flex;gap:10px;flex-wrap:wrap;}
+
+  .mode-sel{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+  .mode-sel button{flex:1;min-width:90px;background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--chalk-dim);border-radius:11px;padding:13px 8px;font-weight:800;font-size:1rem;}
+  .mode-sel button.active{background:var(--green);color:#06140f;border-color:var(--green);}
+  .opt-row{display:flex;align-items:center;gap:9px;margin:0 0 14px;color:var(--chalk-dim);font-size:.9rem;}
+  .opt-row input{width:20px;height:20px;accent-color:var(--gold);}
+
+  .dice-grid{display:flex;flex-direction:column;gap:12px;margin:8px 0 16px;}
+  .dice-row{display:flex;align-items:center;gap:14px;background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:12px;padding:10px 14px;}
+  .dice-row.tie{border-color:var(--red);}
+  .dice-name{flex:1;font-weight:800;font-size:1.05rem;word-break:break-word;}
+  .dice-rank{color:var(--gold);font-weight:900;width:34px;text-align:center;font-size:1.1rem;}
+  .die{width:56px;height:56px;border-radius:11px;background:var(--chalk);box-shadow:0 3px 0 rgba(0,0,0,.35) inset, 0 2px 6px rgba(0,0,0,.4);display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:8px;cursor:pointer;}
+  .die .pip{width:9px;height:9px;border-radius:50%;background:#1a1a1a;align-self:center;justify-self:center;visibility:hidden;}
+  .die .pip.on{visibility:visible;}
+  .die.empty{background:rgba(243,239,226,.12);box-shadow:none;}
+  .die.empty .pip{background:var(--chalk-dim);}
+  .die.rolling{animation:shake .4s linear infinite;}
+  @keyframes shake{0%,100%{transform:translate(0,0) rotate(0)}25%{transform:translate(-2px,1px) rotate(-4deg)}75%{transform:translate(2px,-1px) rotate(4deg)}}
+  .dice-msg{color:var(--chalk-dim);font-size:.85rem;margin:0 0 14px;min-height:1.2em;}
+  .dice-msg.warn{color:var(--red);}
+
+  .mult-bar{display:flex;gap:8px;align-items:center;margin:0 0 12px;flex-wrap:wrap;}
+  .mult-label{color:var(--chalk-dim);font-size:.82rem;margin-right:2px;}
+  .mult{flex:1;min-width:90px;background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--chalk-dim);border-radius:11px;padding:11px 6px;font-weight:800;font-size:.92rem;text-align:center;}
+  .mult b{display:block;font-size:1.2rem;color:var(--chalk);}
+  .mult.active{background:var(--gold);border-color:var(--gold);color:#231c0a;}
+  .mult.active b{color:#231c0a;}
+
+  .turnbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:12px;}
+  .turn-who{font-size:1.15rem;font-weight:900;}
+  .turn-who b{color:var(--gold);}
+  .turn-meta{color:var(--chalk-dim);font-size:.85rem;flex:1;}
+  .turnbar .btn{padding:9px 13px;font-size:.9rem;}
+  .nextpulse{animation:pulse 1.1s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(217,178,90,.6)}50%{box-shadow:0 0 0 7px rgba(217,178,90,0)}}
+  .bustmsg{color:var(--red);font-weight:900;}
+
+  .board{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:rgba(0,0,0,.15);position:relative;}
+  table{width:100%;border-collapse:collapse;}
+  th,td{border-bottom:1px solid var(--line);text-align:center;}
+  thead th{padding:10px 6px;background:rgba(0,0,0,.25);vertical-align:bottom;}
+  th.curcol{background:rgba(217,178,90,.18);box-shadow:inset 0 -3px 0 var(--gold);}
+  .pname{font-weight:800;font-size:1rem;word-break:break-word;}
+  .pscore{display:inline-block;margin-top:4px;color:var(--gold);font-weight:900;font-size:1.25rem;font-variant-numeric:tabular-nums;}
+  .pscore.lead{color:var(--green);}
+  .col-num{width:74px;background:rgba(0,0,0,.28);font-family:"Arial Black",sans-serif;font-size:1.35rem;color:var(--chalk);}
+  .col-num .bulllbl{font-size:.92rem;}
+  td.cell{height:62px;background:var(--cell);position:relative;transition:background .12s;}
+  td.cell.live{cursor:pointer;background:var(--cell-hi);}
+  td.cell.live:active{background:rgba(217,178,90,.28);}
+  td.cell.dim{opacity:.5;}
+  td.closed{background:rgba(63,143,94,.12);}
+  tbody tr{position:relative;}
+  tr.dead .col-num,tr.dead td.cell{color:var(--chalk-dim);background:var(--dead);}
+  tr.dead::after{content:"";position:absolute;left:0;right:0;top:50%;height:3px;background:var(--red);box-shadow:0 0 6px rgba(194,57,47,.6);transform:translateY(-50%);pointer-events:none;}
+  .marks{position:relative;width:42px;height:42px;margin:0 auto;}
+  .marks .bar{position:absolute;top:50%;left:50%;width:36px;height:5px;border-radius:4px;background:var(--chalk);transform-origin:center;box-shadow:0 0 4px rgba(243,239,226,.35);}
+  .marks .bar.fwd{transform:translate(-50%,-50%) rotate(45deg);}
+  .marks .bar.back{transform:translate(-50%,-50%) rotate(-45deg);}
+  .marks .ring{position:absolute;top:50%;left:50%;width:42px;height:42px;border:5px solid var(--chalk);border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 5px rgba(243,239,226,.3);}
+
+  /* x01 */
+  .x01-scores{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+  .x01-card{flex:1;min-width:120px;background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center;}
+  .x01-card.cur{border-color:var(--gold);background:rgba(217,178,90,.12);box-shadow:0 0 0 1px var(--gold) inset;}
+  .x01-card .nm{font-weight:800;word-break:break-word;}
+  .x01-card .rem{font-family:"Arial Black",sans-serif;font-size:2.1rem;color:var(--gold);margin:4px 0;}
+  .x01-card.cur .rem{color:var(--chalk);}
+  .x01-card.done .rem{color:var(--green);}
+  .x01-card .info{font-size:.74rem;color:var(--chalk-dim);min-height:1em;}
+  .x01-pad{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+  .x01-pad button{background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--chalk);border-radius:10px;padding:15px 0;font-size:1.15rem;font-weight:800;}
+  #checkoutHint{background:rgba(217,178,90,.12);border:1px solid var(--gold);border-radius:11px;padding:9px 13px;margin-bottom:12px;font-size:.92rem;}
+  #checkoutHint .lbl{color:var(--chalk-dim);font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;margin-right:8px;}
+  #checkoutHint b{color:var(--gold);font-size:1.05rem;letter-spacing:.5px;}
+  #checkoutHint .none{color:var(--chalk-dim);font-style:italic;}
+  .hintToggle{background:none;border:none;color:var(--chalk-dim);font-size:.8rem;padding:6px 2px;cursor:pointer;text-decoration:underline;}
+  /* compacter tijdens het spelen, zodat alles op één scherm past */
+  body.playing .brand{display:none;}
+  body.playing #game{margin-top:2px;}
+  body.playing .turnbar{margin-bottom:8px;}
+  body.playing .mult-bar{margin:8px 0;}
+  body.playing #x01Panel .x01-scores,body.playing #seqPanel .x01-scores,body.playing #roundsPanel .x01-scores{margin-bottom:8px;}
+  body.playing .x01-pad button,body.playing .seq-pad button{padding:13px 0;}
+  body.playing .tools{margin-top:10px;}
+  #seqTarget,#roundsTarget{text-align:center;margin:4px 0 14px;}
+  #seqTarget .lbl,#roundsTarget .lbl{display:block;color:var(--chalk-dim);font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;}
+  #seqTarget .tgt,#roundsTarget .tgt{font-family:"Arial Black",sans-serif;font-size:2.2rem;color:var(--gold);}
+  .seq-pad{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  .seq-pad button{background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--chalk);border-radius:12px;padding:18px 0;font-size:1.1rem;font-weight:800;}
+  .seq-pad button.hit{background:var(--green);color:#06140f;border-color:var(--green);}
+  .seq-pad button.miss{background:transparent;}
+  .seq-pad button:disabled{opacity:.35;}
+  .x01-card .pos{font-family:"Arial Black",sans-serif;font-size:1.5rem;color:var(--gold);margin:4px 0;}
+  #matchStatus{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:11px;padding:8px 12px;margin-bottom:10px;font-size:.9rem;}
+  #matchStatus .ms{display:inline-flex;gap:7px;align-items:center;}
+  #matchStatus .ms b{color:var(--gold);font-variant-numeric:tabular-nums;}
+  #matchStatus .lbl{color:var(--chalk-dim);font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;}
+  .winner.leg{border-color:var(--green);background:rgba(63,143,94,.12);}
+  .winner.leg h2{color:var(--green);}
+  #confetti{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;}
+  #confetti i{position:absolute;top:-12px;width:9px;height:14px;border-radius:2px;opacity:.95;animation:confFall linear forwards;}
+  @keyframes confFall{to{transform:translateY(104vh) rotate(720deg);opacity:.9;}}
+  .winner.pop{animation:winPop .5s ease;}
+  @keyframes winPop{0%{transform:scale(.85);opacity:0;}60%{transform:scale(1.04);}100%{transform:scale(1);opacity:1;}}
+  .x01-pad button:active{background:var(--cell-hi);}
+  .x01-pad button.bull{grid-column:span 5;background:var(--red);color:#fff;font-size:1rem;}
+  .x01-pad button:disabled{opacity:.3;}
+
+  .tools{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+  .tools .btn{flex:1;min-width:110px;}
+  .winner{margin-top:16px;border:1px solid var(--gold);border-radius:14px;padding:16px;text-align:center;background:rgba(217,178,90,.10);}
+  .winner h2{margin:0;font-size:1.4rem;color:var(--gold);}
+  .winner p{margin:6px 0 10px;color:var(--chalk-dim);font-size:.9rem;}
+  .hint{color:var(--chalk-dim);font-size:.78rem;margin-top:14px;line-height:1.5;}
+  .hidden{display:none !important;}
+
+  .hsec{margin-bottom:22px;}
+  .hsec h3{font-size:1rem;margin:0 0 10px;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;}
+  .histfilter{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+  .histfilter button{background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--chalk-dim);border-radius:9px;padding:8px 16px;font-weight:700;}
+  .histfilter button.active{background:var(--gold);color:#231c0a;border-color:var(--gold);}
+  table.lead{width:100%;border-collapse:collapse;font-size:.92rem;}
+  table.lead th,table.lead td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:right;}
+  table.lead th:first-child,table.lead td:first-child{text-align:left;}
+  table.lead thead th{color:var(--chalk-dim);font-weight:700;font-size:.78rem;text-transform:uppercase;}
+  table.lead td.win{color:var(--green);font-weight:900;}
+  .chartwrap{background:rgba(0,0,0,.15);border:1px solid var(--line);border-radius:12px;padding:12px;}
+  .charttitle{color:var(--chalk-dim);font-size:.8rem;margin:0 0 6px;}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:.82rem;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .legend i{width:13px;height:13px;border-radius:3px;display:inline-block;}
+  .gamelog{display:flex;flex-direction:column;gap:8px;}
+  .glog{background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:.88rem;}
+  .glog .gdate{color:var(--chalk-dim);font-size:.78rem;}
+  .badge{display:inline-block;font-size:.7rem;font-weight:800;padding:2px 7px;border-radius:6px;background:rgba(217,178,90,.2);color:var(--gold);margin-right:6px;}
+  .empty-note{color:var(--chalk-dim);font-size:.9rem;font-style:italic;}
+
+  @media (max-width:520px){
+    .col-num{width:54px;font-size:1.1rem;}
+    .pname{font-size:.82rem;}
+    .marks{width:34px;height:34px;} .marks .bar{width:29px;height:4px;} .marks .ring{width:34px;height:34px;border-width:4px;}
+    .die{width:48px;height:48px;} .die .pip{width:7px;height:7px;}
+    .x01-pad button{padding:12px 0;font-size:1rem;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <img class="brand-logo" src="data:image/png;base64,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" alt="Schiffeleers Glas">
+    <div class="brand-txt">
+      <h1>Darts <span class="pip">Score</span><span class="pip2">bord</span></h1>
+      <p class="sub">Cricket · 501 · 201 — Schiffeleers Glas</p>
+    </div>
+  </div>
+
+  <!-- ===== SETUP ===== -->
+  <section id="setup" class="card">
+    <div class="mode-sel" id="modeSel">
+      <button data-mode="cricket" class="active">Cricket</button>
+      <button data-mode="tactics">Tactics</button>
+      <button data-mode="501">501</button>
+      <button data-mode="201">201</button>
+      <button data-mode="checkout">Checkout training</button>
+      <button data-mode="clock">Around the Clock</button>
+      <button data-mode="doubles">Doubles training</button>
+      <button data-mode="shanghai">Shanghai</button>
+      <button data-mode="halveit">Halve It</button>
+    </div>
+    <div class="opt-row hidden" id="optDoubleOut">
+      <input type="checkbox" id="doubleOut"><label for="doubleOut">Dubbel uit (finishen op een dubbel)</label>
+    </div>
+    <div class="opt-row hidden" id="optCutthroat">
+      <input type="checkbox" id="cutthroat"><label for="cutthroat">Cut-throat (punten gaan naar tegenstanders, laagste wint)</label>
+    </div>
+    <div class="opt-row" id="optMatch">
+      <label style="flex:1;">Legs (best of)
+        <select id="bestLegs"><option>1</option><option>3</option><option>5</option><option>7</option></select></label>
+      <label style="flex:1;">Sets (best of)
+        <select id="bestSets"><option>1</option><option>3</option><option>5</option></select></label>
+    </div>
+    <div class="opt-row hidden" id="optCheckout">
+      <label style="flex:1;">Checkout startgetal (dubbel uit)
+        <input type="number" id="coTarget" min="2" max="170" value="121" style="width:90px;background:rgba(0,0,0,.22);border:1px solid var(--line);color:var(--chalk);border-radius:8px;padding:8px;"></label>
+    </div>
+    <div class="opt-row" id="optBot">
+      <input type="checkbox" id="vsBot"><label for="vsBot">Speel tegen de robot 🤖</label>
+    </div>
+    <div class="opt-row hidden" id="optSkill">
+      <label style="flex:1;">Niveau robot: <b id="skillVal" style="color:var(--gold);">5</b> / 10</label>
+      <input type="range" id="skillRange" min="0" max="10" value="5" style="flex:1;accent-color:var(--gold);">
+    </div>
+    <div class="players-setup" id="playersSetup"></div>
+    <div class="setup-actions">
+      <button class="btn ghost" id="addPlayer">+ Speler</button>
+      <button class="btn" id="toDice">Volgorde gooien 🎲</button>
+      <button class="btn ghost" id="toHistory1">📊 Scorebord</button>
+    </div>
+  </section>
+
+  <!-- ===== DOBBELEN ===== -->
+  <section id="dice" class="card hidden">
+    <div class="dice-grid" id="diceGrid"></div>
+    <p class="dice-msg" id="diceMsg"></p>
+    <div class="setup-actions">
+      <button class="btn gold" id="rollAll">🎲 Gooi voor iedereen</button>
+      <button class="btn" id="confirmOrder" disabled>Bevestig volgorde ▸</button>
+      <button class="btn ghost" id="backToSetup">◂ Spelers</button>
+    </div>
+    <p class="hint">Iedereen gooit één keer. Hoogste worp begint. Bij gelijkspel gooien die spelers opnieuw (tik op hun dobbelsteen of gooi voor iedereen).</p>
+  </section>
+
+  <!-- ===== GAME ===== -->
+  <section id="game" class="hidden">
+    <div id="matchStatus" class="hidden"></div>
+    <div class="turnbar" id="turnbar"></div>
+    <div class="mult-bar">
+      <span class="mult-label">Worp telt als:</span>
+      <button class="mult active" data-m="1"><b>1×</b>Enkel</button>
+      <button class="mult" data-m="2"><b>2×</b>Dubbel</button>
+      <button class="mult" data-m="3"><b>3×</b>Triple</button>
+    </div>
+
+    <div class="board" id="cricketBoard">
+      <table><thead><tr id="headRow"></tr></thead><tbody id="bodyRows"></tbody></table>
+    </div>
+
+    <div id="x01Panel" class="hidden">
+      <div class="x01-scores" id="x01Scores"></div>
+      <div id="checkoutHint" class="hidden"></div>
+      <div class="x01-pad" id="x01Pad"></div>
+    </div>
+
+    <div id="seqPanel" class="hidden">
+      <div class="x01-scores" id="seqScores"></div>
+      <div id="seqTarget"></div>
+      <div class="seq-pad" id="seqPad"></div>
+    </div>
+
+    <div id="roundsPanel" class="hidden">
+      <div class="x01-scores" id="roundsScores"></div>
+      <div id="roundsTarget"></div>
+      <div class="x01-pad" id="roundsPad"></div>
+    </div>
+
+    <div id="winnerBox"></div>
+    <div class="tools">
+      <button class="btn gold" id="undo">↶ Ongedaan</button>
+      <button class="btn ghost" id="toHistory2">📊 Scorebord</button>
+      <button class="btn ghost" id="newGame">Nieuw spel</button>
+      <button class="btn red" id="quitGame">Spelers wijzigen</button>
+      <button class="btn ghost" id="muteBtn" title="Geluid aan/uit">🔊</button>
+    </div>
+    <button class="hintToggle" id="hintToggle">ⓘ Spelregels tonen</button>
+    <p class="hint hidden" id="gameHint"></p>
+  </section>
+
+  <!-- ===== SCOREBORD ===== -->
+  <section id="history" class="card hidden">
+    <div class="histfilter" id="histFilter">
+      <button data-f="all" class="active">Alle</button>
+      <button data-f="cricket">Cricket</button>
+      <button data-f="501">501</button>
+      <button data-f="201">201</button>
+      <button data-f="checkout">Checkout</button>
+      <button data-f="clock">Klok</button>
+      <button data-f="doubles">Dubbels</button>
+      <button data-f="shanghai">Shanghai</button>
+      <button data-f="halveit">Halve It</button>
+    </div>
+    <div class="opt-row" style="margin-bottom:16px;">
+      <input type="checkbox" id="showBot"><label for="showBot">Robotspellen meetellen 🤖</label>
+    </div>
+    <div class="hsec"><h3>Ranglijst</h3><div id="leadTable"></div></div>
+    <div class="hsec"><h3>Verloop over de spellen</h3><div id="chartArea"></div></div>
+    <div class="hsec"><h3>Gespeelde spellen</h3><div class="gamelog" id="gameLog"></div></div>
+
+    <div class="hsec">
+      <h3>Back-up — exporteren / importeren</h3>
+      <p class="empty-note" style="margin:-4px 0 10px;">Bewaar je scorebord (en lopend spel) als bestand of als tekst. Handig als de opslag in de browser niet bewaard blijft.</p>
+      <div class="setup-actions">
+        <button class="btn gold" id="doExport">⬇ Exporteren</button>
+        <button class="btn ghost" id="pickImportFile">📂 Importeer bestand</button>
+        <input type="file" id="importFileInput" accept="application/json,.json" hidden>
+      </div>
+      <textarea id="backupText" placeholder="Hier verschijnt je back-uptekst na 'Exporteren'. Of plak hier eerder gekopieerde tekst en tik op 'Importeer uit tekst'."></textarea>
+      <div class="setup-actions">
+        <button class="btn ghost" id="copyBackup">Kopieer tekst</button>
+        <button class="btn" id="importTextBtn">Importeer uit tekst</button>
+      </div>
+      <p class="empty-note" id="backupMsg" style="min-height:1.1em;"></p>
+    </div>
+
+    <div class="setup-actions">
+      <button class="btn" id="backFromHistory">◂ Terug</button>
+      <button class="btn red" id="clearHistory">Historiek wissen</button>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+const STORE="darts_app_v3";
+const STORE_HIST="darts_hist_v2";
+const STORE_NAMES="darts_names_v1";
+const STORE_MUTE="darts_mute_v1";
+const NUMS=[20,19,18,17,16,15,25];           // Cricket; 25 = Bull
+const PALETTE=["#d9b25a","#3f8f5e","#c2392f","#5b9bd5","#b06fd0","#e0843a","#46b8a8","#d36fa0"];
+
+let state=null, mult=1, history=[], dice=null, games=[];
+let setupMode="cricket", setupDoubleOut=false, histFilter="all";
+let setupVsBot=false, setupSkill=5, botBusy=false;
+let autoTimer=null, suppressAuto=false;
+let setupCutthroat=false, setupBestLegs=1, setupBestSets=1, showBot=false, muted=false;
+let setupCoTarget=121;
+
+/* ---------- opslag ---------- */
+function save(){try{localStorage.setItem(STORE,JSON.stringify({state,mult}));}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem(STORE)||"null");if(d&&d.state){state=d.state;mult=d.mult||1;return true;}}catch(e){}return false;}
+function saveGames(){try{localStorage.setItem(STORE_HIST,JSON.stringify(games));}catch(e){}}
+function loadGames(){try{games=JSON.parse(localStorage.getItem(STORE_HIST)||"[]")||[];}catch(e){games=[];}}
+function saveNames(arr){try{localStorage.setItem(STORE_NAMES,JSON.stringify(arr));}catch(e){}}
+function loadNames(){try{const a=JSON.parse(localStorage.getItem(STORE_NAMES)||"null");return Array.isArray(a)&&a.length?a:null;}catch(e){return null;}}
+function snap(){history.push(JSON.stringify(state));if(history.length>400)history.shift();suppressAuto=false;}
+function clearAuto(){if(autoTimer){clearTimeout(autoTimer);autoTimer=null;}}
+function scheduleAutoAdvance(){
+  clearAuto();
+  if(suppressAuto||!state)return;
+  const cur=state.players[state.current];
+  if(!cur||cur.isBot||win())return;
+  if(state.darts>=3||state.bust){
+    autoTimer=setTimeout(()=>{autoTimer=null;
+      if(state&&!win()&&(state.darts>=3||state.bust)&&!state.players[state.current].isBot)nextTurn();
+    },1000);
+  }
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+/* ---------- gedeeld ---------- */
+const TACTICS_NUMS=[20,19,18,17,16,15,14,13,12,11,10,25];
+function cnums(){return (state&&state.nums)||NUMS;}
+function freshCricket(name,nums){const marks={};(nums||NUMS).forEach(n=>marks[n]=0);return{name,marks,points:0};}
+function win(){return state.mode==='x01'?winnerX01():(state.mode==='seq'?winnerSeq():(state.mode==='rounds'?winnerRounds():winnerCricket()));}
+function useDart(){state.darts++;}
+function gameHasProgress(){
+  if(!state)return false;
+  if(state.mode==='cricket')return state.players.some(p=>p.points>0||cnums().some(n=>p.marks[n]>0));
+  if(state.mode==='x01')return state.players.some(p=>p.score!==state.target);
+  if(state.mode==='seq')return state.players.some(p=>(p.pos||0)>0);
+  if(state.mode==='rounds')return state.round>1||state.players.some(p=>(p.score||0)>0||(p.darts||0)>0);
+  return false;
+}
+function nextTurn(){
+  clearAuto();snap();
+  if(state.mode==='rounds'&&state.roundsType==='halveit'&&(state.hiTurn||0)===0){
+    const p=state.players[state.current];p.score=Math.floor((p.score||0)/2);
+  }
+  state.darts=0;
+  state.current=(state.current+1)%state.players.length;
+  if(state.current===0)state.round++;
+  if(state.mode==='x01'){state.turnStart=state.players[state.current].score;state.bust=false;state.dartsLog=[];}
+  if(state.mode==='rounds'){state.hiTurn=0;state.sdt={};}
+  save();render();botTurnIfNeeded();
+}
+function miss(){
+  if(state.darts>=3||state.bust||win())return;
+  snap();
+  if(state.mode==='x01'){state.players[state.current].dartsUsed++;state.dartsLog.push('Mis');}
+  else if(state.mode==='seq'){state.players[state.current].darts=(state.players[state.current].darts||0)+1;}
+  useDart();save();render();
+}
+
+/* ---------- Cricket ---------- */
+function isClosedBy(p,n){return p.marks[n]>=3;}
+function rowDead(n){return state.players.every(p=>isClosedBy(p,n));}
+function someoneOpen(n,ex){return state.players.some((p,i)=>i!==ex&&!isClosedBy(p,n));}
+function winnerCricket(){
+  const cut=state.cutthroat;
+  let best=null;
+  state.players.forEach(p=>{
+    if(cnums().every(n=>p.marks[n]>=3)){
+      const o=state.players.filter(q=>q!==p).map(q=>q.points);
+      if(cut){
+        const mn=o.length?Math.min(...o):Infinity;
+        if(p.points<=mn&&(!best||p.points<best.points))best=p;
+      }else{
+        const mx=o.length?Math.max(...o):0;
+        if(p.points>=mx&&(!best||p.points>best.points))best=p;
+      }
+    }
+  });return best;
+}
+function addHit(n,count){
+  if(rowDead(n)||state.darts>=3||win())return;
+  snap();const p=state.players[state.current];
+  let rem=count;while(rem>0&&p.marks[n]<3){p.marks[n]++;rem--;}
+  if(rem>0){
+    const pts=rem*n;
+    if(state.cutthroat){
+      state.players.forEach((o,i)=>{if(i!==state.current&&o.marks[n]<3){o.points+=pts;o.matchPoints=(o.matchPoints||0)+pts;}});
+    }else if(someoneOpen(n,state.current)){
+      p.points+=pts;p.matchPoints=(p.matchPoints||0)+pts;
+    }
+  }
+  mult=1;useDart();save();checkLegEnd();render();
+}
+
+/* ---------- 501 / 201 ---------- */
+function winnerX01(){return state.players.find(p=>p.score===0)||null;}
+function labelDart(num,m,val){
+  if(num===25)return val===50?'Bull50':'25';
+  return (m===2?'D':m===3?'T':'')+num;
+}
+function applyX01Dart(val,isDouble,label){
+  if(state.darts>=3||state.bust||win())return;
+  snap();const p=state.players[state.current];
+  p.dartsUsed++;state.dartsLog.push(label);
+  const after=p.score-val, dOut=state.doubleOut;
+  let bust=false;
+  if(after<0)bust=true;
+  else if(dOut&&after===1)bust=true;
+  else if(dOut&&after===0&&!isDouble)bust=true;
+  if(bust){state.bust=true;p.score=state.turnStart;state.darts=3;}
+  else{
+    p.score=after;p.scored=(p.scored||0)+val;useDart();
+    if(p.score===0)p.bestFinish=Math.max(p.bestFinish||0,state.turnStart);
+    if(state.darts===3&&(state.turnStart-p.score)===180)p.count180=(p.count180||0)+1;
+  }
+  save();checkLegEnd();render();
+}
+function addDartX01(num){
+  const m=mult;
+  const val=(num===25)?(m>=2?50:25):num*m;
+  const isDbl=num===25?val===50:m===2;
+  applyX01Dart(val,isDbl,labelDart(num,m,val));
+  mult=1;
+}
+
+/* ---------- Around the Clock / Doubles training ---------- */
+function winnerSeq(){return state.players.find(p=>(p.pos||0)>=state.seq.length)||null;}
+function seqTargetLabel(p){
+  if((p.pos||0)>=state.seq.length)return '✓ klaar';
+  const t=state.seq[p.pos||0];
+  if(state.seqType==='doubles')return t===25?'Bull (dubbel 50)':'Dubbel '+t;
+  return t===25?'Bull':String(t);
+}
+function seqHit(adv){
+  if(state.darts>=3||win())return;
+  snap();const p=state.players[state.current];
+  p.darts=(p.darts||0)+1;p.hits=(p.hits||0)+1;
+  p.pos=Math.min(state.seq.length,(p.pos||0)+adv);
+  useDart();save();checkLegEnd();render();
+}
+function seqMiss(){
+  if(state.darts>=3||win())return;
+  snap();const p=state.players[state.current];
+  p.darts=(p.darts||0)+1;
+  useDart();save();render();
+}
+
+/* ---------- Shanghai / Halve It (rondes) ---------- */
+function roundTarget(){return state.roundList[state.round-1];}
+function roundLabel(t){
+  if(!t)return '—';
+  if(t.type==='bull')return 'Bull';
+  if(t.type==='double')return 'Dubbels';
+  if(t.type==='triple')return 'Triples';
+  return String(t.n);
+}
+function winnerRounds(){
+  const sh=state.players.find(p=>p.shanghaiWin);
+  if(sh)return sh;
+  if(state.round>state.roundList.length){
+    let best=null;state.players.forEach(p=>{if(!best||(p.score||0)>(best.score||0))best=p;});
+    return best;
+  }
+  return null;
+}
+function addRoundsDart(num){
+  if(state.darts>=3||win())return;
+  snap();const m=mult;mult=1;
+  const p=state.players[state.current], t=roundTarget();
+  const isBull=num===25;
+  const val=isBull?(m>=2?50:25):num*m;
+  let counts=false,addv=0;
+  if(t.type==='num'){if(!isBull&&num===t.n){counts=true;addv=val;}}
+  else if(t.type==='bull'){if(isBull){counts=true;addv=val;}}
+  else if(t.type==='double'){if(!isBull&&m===2){counts=true;addv=val;}else if(isBull&&val===50){counts=true;addv=50;}}
+  else if(t.type==='triple'){if(!isBull&&m===3){counts=true;addv=val;}}
+  if(counts){
+    p.score=(p.score||0)+addv;state.hiTurn=(state.hiTurn||0)+addv;
+    if(state.roundsType==='shanghai'&&t.type==='num'){state.sdt=state.sdt||{};state.sdt[m]=true;
+      if(state.sdt[1]&&state.sdt[2]&&state.sdt[3])p.shanghaiWin=true;}
+  }
+  p.darts=(p.darts||0)+1;
+  useDart();save();checkLegEnd();render();
+}
+function roundsMiss(){
+  if(state.darts>=3||win())return;
+  snap();const p=state.players[state.current];
+  p.darts=(p.darts||0)+1;mult=1;
+  useDart();save();render();
+}
+
+/* ---------- legs / sets ---------- */
+function checkLegEnd(){
+  const w=win();
+  if(!w||state.legDone)return;
+  state.legDone=true;state.setJustWon=false;
+  w.legs=(w.legs||0)+1;
+  if(w.legs>=state.legsToWin){
+    w.sets=(w.sets||0)+1;
+    state.setJustWon=true;
+    state.matchOver=w.sets>=state.setsToWin;
+    if(!state.matchOver)state.players.forEach(p=>p.legs=0);
+  }else state.matchOver=false;
+  save();celebrate(state.matchOver);
+}
+function startNextLeg(){
+  snap();
+  const n=state.players.length;
+  state.startSeat=((state.startSeat||0)+1)%n;
+  state.current=state.startSeat;state.round=1;state.darts=0;
+  state.legDone=false;state.setJustWon=false;state.matchOver=false;
+  if(state.mode==='cricket'){state.players.forEach(p=>{cnums().forEach(x=>p.marks[x]=0);p.points=0;});}
+  else if(state.mode==='seq'){state.players.forEach(p=>{p.pos=0;});}
+  else if(state.mode==='rounds'){state.players.forEach(p=>{p.score=0;p.shanghaiWin=false;});state.hiTurn=0;state.sdt={};}
+  else{state.players.forEach(p=>{p.score=state.target;});state.bust=false;state.dartsLog=[];state.turnStart=state.players[state.current].score;}
+  save();render();botTurnIfNeeded();
+}
+
+/* ---------- viering ---------- */
+/* Geluid via een <audio>-element met in-app gegenereerde WAV.
+   Dit speelt via het mediakanaal en klinkt op iPhone ook bij de stille stand,
+   in tegenstelling tot Web Audio (AudioContext), dat door de stille schakelaar wordt gedempt. */
+let bigAudio=null, legAudio=null;
+function fanfareWavUri(big){
+  const sr=22050;
+  const seq=big?[[523.25,0.16],[659.25,0.16],[783.99,0.16],[1046.5,0.34]]
+               :[[659.25,0.15],[987.77,0.30]];
+  const lead=Math.floor(sr*0.15);                 // stilte vooraan (dekt de ontgrendel-tik)
+  let len=lead;seq.forEach(s=>len+=Math.floor(sr*s[1]));
+  const data=new Float32Array(len);let off=lead;
+  seq.forEach(([f,dur])=>{
+    const n=Math.floor(sr*dur);
+    for(let i=0;i<n;i++){
+      const t=i/sr, env=Math.min(1,t*45)*Math.exp(-t*3.2);
+      data[off+i]=env*(Math.sin(2*Math.PI*f*t)*0.55+Math.sin(4*Math.PI*f*t)*0.14);
+    }
+    off+=n;
+  });
+  const dataLen=data.length*2, ab=new ArrayBuffer(44+dataLen), dv=new DataView(ab);
+  const ws=(o,s)=>{for(let i=0;i<s.length;i++)dv.setUint8(o+i,s.charCodeAt(i));};
+  ws(0,'RIFF');dv.setUint32(4,36+dataLen,true);ws(8,'WAVE');ws(12,'fmt ');
+  dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);
+  dv.setUint32(24,sr,true);dv.setUint32(28,sr*2,true);dv.setUint16(32,2,true);dv.setUint16(34,16,true);
+  ws(36,'data');dv.setUint32(40,dataLen,true);
+  let o=44;for(let i=0;i<data.length;i++){let s=Math.max(-1,Math.min(1,data[i]));dv.setInt16(o,s*32767,true);o+=2;}
+  const bytes=new Uint8Array(ab);let bin='';for(let i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
+  return 'data:audio/wav;base64,'+btoa(bin);
+}
+function ensureAudio(){
+  if(bigAudio)return;
+  try{
+    bigAudio=new Audio(fanfareWavUri(true));bigAudio.preload='auto';
+    legAudio=new Audio(fanfareWavUri(false));legAudio.preload='auto';
+  }catch(e){}
+}
+// iPhone/Safari: media mag pas klinken na een gebruikersgebaar -> bij de eerste tik ontgrendelen
+function unlockAudio(){
+  ensureAudio();
+  [bigAudio,legAudio].forEach(a=>{
+    if(!a||!a.play)return;
+    try{const p=a.play();if(p&&p.then)p.then(()=>{a.pause();a.currentTime=0;}).catch(()=>{});}catch(e){}
+  });
+}
+['pointerdown','touchend','click','keydown'].forEach(ev=>
+  document.addEventListener(ev,unlockAudio,{once:true,passive:true}));
+function celebrate(big){spawnConfetti(big?90:45);playFanfare(big);}
+function spawnConfetti(n){
+  let c=document.getElementById('confetti');
+  if(!c){c=document.createElement('div');c.id='confetti';document.body.appendChild(c);}
+  const cols=['#d9b25a','#3f8f5e','#c2392f','#f3efe2','#5b9bd5'];
+  for(let i=0;i<n;i++){
+    const s=document.createElement('i');
+    s.style.left=Math.random()*100+'vw';
+    s.style.background=cols[i%cols.length];
+    s.style.animationDuration=(1.6+Math.random()*1.4)+'s';
+    s.style.animationDelay=(Math.random()*0.3)+'s';
+    c.appendChild(s);
+    setTimeout(()=>{if(s.parentNode)s.parentNode.removeChild(s);},3500);
+  }
+}
+function playFanfare(big){
+  if(muted)return;
+  ensureAudio();
+  const a=big?bigAudio:legAudio;if(!a||!a.play)return;
+  try{a.currentTime=0;const p=a.play();if(p&&p.catch)p.catch(()=>{});}catch(e){}
+}
+
+/* ---------- robot ---------- */
+function botTurnIfNeeded(){
+  const p=state&&state.players[state.current];
+  if(botBusy||!p||!p.isBot||win())return;
+  botBusy=true;
+  setTimeout(botDartStep,650);
+}
+function botDartStep(){
+  if(win()){botBusy=false;render();return;}
+  if(state.darts>=3||(state.mode==='x01'&&state.bust)){
+    setTimeout(()=>{botBusy=false;nextTurn();},750);
+    return;
+  }
+  botThrowOne();
+  setTimeout(botDartStep,750);
+}
+function botThrowOne(){
+  const p=state.players[state.current];
+  const pHit=Math.max(0,Math.min(10,p.skill||0))/10;
+  if(state.mode==='seq'){
+    if(Math.random()<pHit)seqHit(1);else seqMiss();
+    return;
+  }
+  if(state.mode==='rounds'){
+    if(Math.random()<pHit){
+      const t=roundTarget();
+      if(t.type==='num'){mult=1;addRoundsDart(t.n);}
+      else if(t.type==='bull'){mult=1;addRoundsDart(25);}
+      else if(t.type==='double'){mult=2;addRoundsDart(20);}
+      else {mult=3;addRoundsDart(20);}
+    }else roundsMiss();
+    return;
+  }
+  if(state.mode!=='x01'){
+    const NN=cnums();
+    let toClose=null,scoreable=null;
+    for(const n of NN){if(p.marks[n]<3){toClose=n;break;}}                 // hoogste nog te sluiten
+    for(const n of NN){if(p.marks[n]>=3&&someoneOpen(n,state.current)){scoreable=n;break;}} // gesloten + tegenstander open
+    let target=toClose;
+    if(scoreable!==null&&(toClose===null||Math.random()<0.45))target=scoreable; // soms punten sprokkelen
+    if(target===null){miss();return;}
+    if(Math.random()<pHit){mult=1;addHit(target,1);}else{miss();}
+    return;
+  }
+  // x01
+  if(Math.random()>=pHit){applyX01Dart(0,false,'mis');return;}
+  const R=p.score,dOut=state.doubleOut;
+  let val,isDbl=false,label;
+  if(R>60){
+    val=(dOut&&R<=100)?(R-40):60;       // dubbel uit: zet 40 klaar; anders T20
+    label=String(val);
+  }else if(!dOut){
+    val=R;isDbl=true;label=R+' uit';     // straight: gooi exact uit
+  }else if(R===50){val=50;isDbl=true;label='Bull';}
+  else if(R<=40&&R%2===0){val=R;isDbl=true;label='D'+(R/2);}
+  else if(R>40){val=R-40;label=String(val);}     // 41..60 oneven/onfinishbaar → zet 40 klaar
+  else{val=(R>=3)?1:0;label=val?'1':'mis';}       // klein oneven → laat even getal staan
+  applyX01Dart(val,isDbl,label);
+}
+
+/* ---------- checkout-suggestie (x01) ---------- */
+function checkoutPath(R,dOut){
+  if(R<2||R>170)return null;
+  const all=[];
+  for(let n=20;n>=1;n--)all.push([3*n,'T'+n]);
+  all.push([50,'Bull'],[25,'25']);
+  for(let n=20;n>=1;n--)all.push([2*n,'D'+n]);
+  for(let n=20;n>=1;n--)all.push([n,''+n]);
+  let fin;
+  if(dOut){
+    const order=[40,32,36,24,20,16,8,12,28,4,38,34,30,26,22,18,14,10,6,2,50];
+    fin=order.map(v=>v===50?[50,'Bull']:[v,'D'+(v/2)]);
+  }else fin=all;
+  for(const f of fin)if(f[0]===R)return[f[1]];
+  for(const f of fin)for(const d1 of all)if(d1[0]+f[0]===R)return[d1[1],f[1]];
+  for(const f of fin)for(const d1 of all)for(const d2 of all)if(d1[0]+d2[0]+f[0]===R)return[d1[1],d2[1],f[1]];
+  return null;
+}
+function renderCheckout(){
+  const el=document.getElementById('checkoutHint');
+  const cur=state.players[state.current];
+  if(state.mode!=='x01'||!cur||cur.isBot||win()||cur.score<2||cur.score>170){el.classList.add('hidden');return;}
+  const path=checkoutPath(cur.score,state.doubleOut);
+  el.classList.remove('hidden');
+  el.innerHTML=path
+    ? `<span class="lbl">Checkout ${cur.score}</span><b>${path.join('  →  ')}</b>`
+    : `<span class="lbl">Checkout ${cur.score}</span><span class="none">geen finish in 3 pijlen</span>`;
+}
+
+/* ---------- render ---------- */
+function markHTML(c){let h='<div class="marks">';if(c>=1)h+='<span class="bar fwd"></span>';if(c>=2)h+='<span class="bar back"></span>';if(c>=3)h+='<span class="ring"></span>';return h+'</div>';}
+function render(){
+  document.querySelectorAll('.mult').forEach(b=>b.classList.toggle('active',Number(b.dataset.m)===mult));
+  document.getElementById('seqPanel').classList.toggle('hidden',state.mode!=='seq');
+  document.getElementById('roundsPanel').classList.toggle('hidden',state.mode!=='rounds');
+  document.querySelector('.mult-bar').classList.toggle('hidden',state.mode==='seq');
+  renderMatchStatus();
+  if(state.mode==='x01')renderX01();
+  else if(state.mode==='seq')renderSeq();
+  else if(state.mode==='rounds')renderRounds();
+  else renderCricket();
+  document.getElementById('undo').disabled=history.length===0||botBusy;
+  scheduleAutoAdvance();
+}
+function renderMatchStatus(){
+  const el=document.getElementById('matchStatus');if(!el)return;
+  if(state.legsToWin<=1&&state.setsToWin<=1){el.classList.add('hidden');return;}
+  el.classList.remove('hidden');
+  const legs=`<span class="ms"><span class="lbl">Legs</span> ${state.players.map(p=>escapeHtml(p.name)+' <b>'+(p.legs||0)+'</b>').join(' · ')} <span class="lbl">(best of ${state.legsToWin*2-1})</span></span>`;
+  const sets=state.setsToWin>1?`<span class="ms"><span class="lbl">Sets</span> ${state.players.map(p=>escapeHtml(p.name)+' <b>'+(p.sets||0)+'</b>').join(' · ')}</span>`:'';
+  el.innerHTML=legs+sets;
+}
+function tallyText(){
+  if(state.setsToWin>1)return 'Sets: '+state.players.map(p=>escapeHtml(p.name)+' '+(p.sets||0)).join(' – ');
+  if(state.legsToWin>1)return 'Legs: '+state.players.map(p=>escapeHtml(p.name)+' '+(p.legs||0)).join(' – ');
+  return '';
+}
+function renderWinnerBox(){
+  const box=document.getElementById('winnerBox');
+  const w=win();
+  if(!w){box.innerHTML='';return;}
+  const single=(state.legsToWin<=1&&state.setsToWin<=1);
+  const finishLine=state.mode==='x01'
+    ? `${state.target} uitgegooid in ${w.dartsUsed} pijlen.`
+    : (state.mode==='seq'
+       ? `Volledige reeks rond in ${w.darts||0} pijlen.`
+       : (state.mode==='rounds'
+          ? (w.shanghaiWin?'Shanghai! Single, dubbel én triple in één beurt.':`Hoogste score: ${w.score||0} punten.`)
+          : (state.cutthroat?`Alle getallen gesloten met de laagste score (${w.points}).`:`Alle getallen gesloten met ${w.points} punten.`)));
+  if(state.matchOver){
+    box.innerHTML=`<div class="winner pop"><h2>🏆 ${escapeHtml(w.name)} wint${single?'':' de match'}!</h2>
+      <p>${finishLine}${single?'':' '+tallyText()}</p>
+      <button class="btn gold" id="saveResult" ${state.saved?'disabled':''}>${state.saved?'✓ Bewaard in scorebord':'📊 Bewaar resultaat in scorebord'}</button></div>`;
+    const sr=document.getElementById('saveResult');if(sr&&!state.saved)sr.onclick=()=>{saveResult();render();};
+  }else{
+    const lbl=state.setJustWon?'Set':'Leg';
+    box.innerHTML=`<div class="winner leg pop"><h2>✅ ${lbl} voor ${escapeHtml(w.name)}!</h2>
+      <p>${finishLine} ${tallyText()}</p>
+      <button class="btn gold" id="nextLeg">Volgende leg ▸</button></div>`;
+    document.getElementById('nextLeg').onclick=startNextLeg;
+  }
+}
+function buildTurnbar(extraMeta){
+  const cur=state.players[state.current], w=win(), turnOver=state.darts>=3;
+  const bot=!!cur.isBot;
+  const over=(turnOver||state.bust)&&!w&&!bot;
+  const tb=document.getElementById('turnbar');
+  const metaTxt = bot&&!w ? 'aan het gooien…'
+    : over ? '<b style="color:var(--gold);">3 pijlen — volgende speler ▸</b>'
+    : `Ronde ${state.round} · pijl ${Math.min(state.darts+1,3)}/3`;
+  tb.innerHTML=`
+    <div class="turn-who">${bot?'🤖':'🎯'} <b>${escapeHtml(cur.name)}</b></div>
+    <div class="turn-meta">${metaTxt}${extraMeta&&!over?extraMeta:''}</div>
+    <button class="btn ghost" id="missBtn" ${turnOver||w||bot||state.mode==='seq'||state.mode==='rounds'?'disabled':''}>Mis</button>
+    <button class="btn gold ${over?'nextpulse':''}" id="nextBtn" ${bot||w?'disabled':''}>${over?'Nu door ▸':'Volgende ▸'}</button>`;
+  const mb=document.getElementById('missBtn'),nb=document.getElementById('nextBtn');
+  if(!bot){mb.onclick=miss;nb.onclick=nextTurn;}
+  return {w,turnOver,bot};
+}
+function renderCricket(){
+  document.getElementById('cricketBoard').classList.remove('hidden');
+  document.getElementById('x01Panel').classList.add('hidden');
+  document.getElementById('gameHint').innerHTML='Het is de beurt aan de gemarkeerde speler — tik in zijn kolom op een getal. Eén tik = 1 raak (/), twee = X, drie = ⊗ (gesloten). Zet eerst Dubbel/Triple als één pijl er meer telt. Mis = pijl zonder score. Lijn bij iedereen uit = doorstreept en dood.'+(state.cutthroat?' <b>Cut-throat:</b> punten gaan naar tegenstanders die het getal nog niet sloten — de laagste score wint.':'');
+
+  const {w,turnOver,bot}=buildTurnbar();
+  const pts=state.players.map(p=>p.points);
+  const leadVal=state.cutthroat?Math.min(...pts):Math.max(0,...pts);
+  document.getElementById('headRow').innerHTML='<th class="col-num"></th>'+state.players.map((p,i)=>{
+    const lead=(state.cutthroat?p.points===leadVal:(p.points>0&&p.points===leadVal))?' lead':'';
+    const cc=i===state.current?' class="curcol"':'';
+    return `<th${cc}><div class="pname">${escapeHtml(p.name)}</div><div class="pscore${lead}">${p.points}</div></th>`;
+  }).join('');
+  document.getElementById('bodyRows').innerHTML=cnums().map(n=>{
+    const dead=rowDead(n);
+    const numCell=n===25?`<td class="col-num"><span class="bulllbl">BULL</span></td>`:`<td class="col-num">${n}</td>`;
+    const cells=state.players.map((p,i)=>{
+      const c=p.marks[n], closed=c>=3?' closed':'';
+      const live=(i===state.current&&!dead&&!turnOver&&!w&&!bot);
+      const cls=live?' live':(i===state.current?'':' dim');
+      return `<td class="cell${closed}${cls}" data-n="${n}" data-live="${live?1:0}">${markHTML(c)}</td>`;
+    }).join('');
+    return `<tr class="${dead?'dead':''}">${numCell}${cells}</tr>`;
+  }).join('');
+  document.querySelectorAll('#bodyRows td.cell').forEach(td=>{if(td.dataset.live==='1')td.onclick=()=>addHit(Number(td.dataset.n),mult);});
+  renderWinnerBox();
+}
+function renderX01(){
+  document.getElementById('cricketBoard').classList.add('hidden');
+  document.getElementById('x01Panel').classList.remove('hidden');
+  document.getElementById('gameHint').innerHTML=`Tik het geraakte getal — de score wordt afgetrokken. Kies eerst Dubbel/Triple indien nodig. Bull = ×1 → 25, ×2 → 50. Mis = pijl zonder score. ${state.doubleOut?'<b>Dubbel uit staat aan:</b> je moet finishen op een dubbel (of bull 50); ':''}onder nul${state.doubleOut?' of resterend 1':''} = bust en je score gaat terug naar het begin van de beurt.`;
+
+  const cur=state.players[state.current];
+  const turnScore=state.bust?null:(state.turnStart-cur.score);
+  const logStr=state.dartsLog.length?state.dartsLog.join(' '):'—';
+  const meta=` · deze beurt: ${state.bust?'<span class="bustmsg">BUST</span>':logStr+(turnScore!=null&&turnScore>0?` (${turnScore})`:'')}`;
+  const {w,turnOver,bot}=buildTurnbar(meta);
+
+  document.getElementById('x01Scores').innerHTML=state.players.map((p,i)=>{
+    const c=i===state.current?' cur':'', done=p.score===0?' done':'';
+    return `<div class="x01-card${c}${done}"><div class="nm">${escapeHtml(p.name)}</div>
+      <div class="rem">${p.score}</div><div class="info">pijlen: ${p.dartsUsed}</div></div>`;
+  }).join('');
+
+  const dis=(turnOver||state.bust||w||bot)?'disabled':'';
+  let pad='';for(let n=1;n<=20;n++)pad+=`<button data-num="${n}" ${dis}>${n}</button>`;
+  pad+=`<button class="bull" data-num="25" ${dis}>Bull &nbsp;(×1 = 25 · ×2 = 50)</button>`;
+  pad+=`<button class="bull miss" data-num="-1" ${dis} style="background:transparent;color:var(--chalk);">Mis (pijl zonder score)</button>`;
+  const padEl=document.getElementById('x01Pad');padEl.innerHTML=pad;
+  if(!dis)padEl.querySelectorAll('button').forEach(b=>b.onclick=()=>{const num=Number(b.dataset.num);num<0?miss():addDartX01(num);});
+  renderCheckout();
+  renderWinnerBox();
+}
+function renderSeq(){
+  document.getElementById('cricketBoard').classList.add('hidden');
+  document.getElementById('x01Panel').classList.add('hidden');
+  const clock=state.seqType==='clock';
+  document.getElementById('gameHint').innerHTML=clock
+    ? 'Gooi op het getoonde doelgetal en geef aan wat je raakte. Enkel = +1, dubbel = +2, triple = +3. Wie als eerste voorbij Bull raakt, wint.'
+    : 'Gooi op de dubbel van het doelgetal. Alleen een rake dubbel telt en zet je één stap verder. Wie als eerste alle dubbels (t.e.m. bull-dubbel) heeft, wint.';
+  const {w,turnOver,bot}=buildTurnbar();
+
+  document.getElementById('seqScores').innerHTML=state.players.map((p,i)=>{
+    const c=i===state.current?' cur':'', done=(p.pos||0)>=state.seq.length?' done':'';
+    const acc=p.darts?Math.round((p.hits||0)/p.darts*100):0;
+    return `<div class="x01-card${c}${done}"><div class="nm">${escapeHtml(p.name)}</div>
+      <div class="pos">${Math.min(p.pos||0,state.seq.length)}/${state.seq.length}</div>
+      <div class="info">doel: ${escapeHtml(seqTargetLabel(p))} · ${acc}% raak</div></div>`;
+  }).join('');
+
+  const cur=state.players[state.current];
+  const tEl=document.getElementById('seqTarget');
+  if(!w&&!turnOver){tEl.innerHTML=`<span class="lbl">${cur.isBot?'Robot mikt op':'Mik op'}</span><span class="tgt">${escapeHtml(seqTargetLabel(cur))}</span>`;}
+  else tEl.innerHTML='';
+
+  const dis=(turnOver||w||bot)?'disabled':'';
+  const padEl=document.getElementById('seqPad');
+  if(clock){
+    padEl.innerHTML=`<button class="hit" data-a="1" ${dis}>Raak +1</button>
+      <button class="hit" data-a="2" ${dis}>Dubbel +2</button>
+      <button class="hit" data-a="3" ${dis}>Triple +3</button>
+      <button class="miss" data-a="0" ${dis}>Mis</button>`;
+  }else{
+    padEl.innerHTML=`<button class="hit" data-a="1" ${dis}>Raak (dubbel) ✓</button>
+      <button class="miss" data-a="0" ${dis}>Mis ✗</button>`;
+  }
+  if(!dis)padEl.querySelectorAll('button').forEach(b=>b.onclick=()=>{const a=Number(b.dataset.a);a>0?seqHit(a):seqMiss();});
+  renderWinnerBox();
+}
+function renderRounds(){
+  document.getElementById('cricketBoard').classList.add('hidden');
+  document.getElementById('x01Panel').classList.add('hidden');
+  document.getElementById('seqPanel').classList.add('hidden');
+  const sh=state.roundsType==='shanghai';
+  document.getElementById('gameHint').innerHTML=sh
+    ? 'Elke ronde mik je op het getoonde getal. Enkel/dubbel/triple tellen hun waarde. Raak je in één beurt single én dubbel én triple van het getal, dan win je meteen (Shanghai!). Anders wint de hoogste score na alle rondes.'
+    : 'Elke ronde mik je op het getoonde doel (getal, Bull, dubbels of triples). Scoor je niets in een ronde, dan wordt je totaal gehalveerd. Hoogste score na alle rondes wint.';
+  const {w,turnOver,bot}=buildTurnbar();
+  const t=roundTarget();
+
+  document.getElementById('roundsScores').innerHTML=state.players.map((p,i)=>{
+    const c=i===state.current?' cur':'';
+    const turnNote=(i===state.current&&!w)?` · beurt +${state.hiTurn||0}`:'';
+    return `<div class="x01-card${c}"><div class="nm">${escapeHtml(p.name)}</div>
+      <div class="rem">${p.score||0}</div><div class="info">ronde ${Math.min(state.round,state.roundList.length)}/${state.roundList.length}${turnNote}</div></div>`;
+  }).join('');
+
+  const tEl=document.getElementById('roundsTarget');
+  if(!w&&t){tEl.innerHTML=`<span class="lbl">Ronde ${state.round}/${state.roundList.length} — mik op</span><span class="tgt">${escapeHtml(roundLabel(t))}</span>`;}
+  else tEl.innerHTML='';
+
+  const dis=(turnOver||w||bot)?'disabled':'';
+  let pad='';for(let n=1;n<=20;n++)pad+=`<button data-num="${n}" ${dis}>${n}</button>`;
+  pad+=`<button class="bull" data-num="25" ${dis}>Bull &nbsp;(×1 = 25 · ×2 = 50)</button>`;
+  pad+=`<button class="bull miss" data-num="0" ${dis} style="background:transparent;color:var(--chalk);">Mis (geen raak)</button>`;
+  const padEl=document.getElementById('roundsPad');padEl.innerHTML=pad;
+  if(!dis)padEl.querySelectorAll('button').forEach(b=>b.onclick=()=>{const num=Number(b.dataset.num);num>0?addRoundsDart(num):roundsMiss();});
+  renderWinnerBox();
+}
+
+/* ---------- dobbelstenen ---------- */
+const PIPS={1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]};
+function dieHTML(val){let c='';for(let i=1;i<=9;i++)c+=`<span class="pip${val&&PIPS[val].includes(i)?' on':''}"></span>`;return c;}
+function ranks(){
+  const v=dice.vals;
+  const order=v.map((val,i)=>({i,val})).filter(o=>o.val>0).sort((a,b)=>b.val-a.val);
+  const counts={};v.forEach(val=>{if(val>0)counts[val]=(counts[val]||0)+1;});
+  const ties=new Set();v.forEach((val,i)=>{if(val>0&&counts[val]>1)ties.add(i);});
+  return{order,ties};
+}
+function renderDice(){
+  const{order,ties}=dice.vals.some(x=>x>0)?ranks():{order:[],ties:new Set()};
+  const rankOf={};order.forEach((o,idx)=>rankOf[o.i]=idx+1);
+  document.getElementById('diceGrid').innerHTML=dice.names.map((nm,i)=>{
+    const val=dice.vals[i], tie=ties.has(i)?' tie':'';
+    const rank=val>0&&!ties.has(i)?(rankOf[i]+'e'):(val>0?'—':'');
+    return `<div class="dice-row${tie}"><span class="dice-rank">${rank}</span>
+      <span class="dice-name">${escapeHtml(nm)}</span>
+      <div class="die${val?'':' empty'}" data-i="${i}">${dieHTML(val||0)}</div></div>`;
+  }).join('');
+  document.querySelectorAll('#diceGrid .die').forEach(d=>d.onclick=()=>rollOne(Number(d.dataset.i)));
+  const allRolled=dice.vals.every(v=>v>0), noTies=ties.size===0;
+  const msg=document.getElementById('diceMsg');
+  if(!allRolled){msg.textContent='Gooi voor iedereen of tik op een dobbelsteen.';msg.classList.remove('warn');}
+  else if(!noTies){msg.textContent='Gelijkspel! Laat de gelijke spelers opnieuw gooien.';msg.classList.add('warn');}
+  else{msg.textContent='Volgorde bepaald — hoogste worp begint. Bevestig om te starten.';msg.classList.remove('warn');}
+  document.getElementById('confirmOrder').disabled=!(allRolled&&noTies);
+}
+function animateDie(i,final,cb){
+  const el=document.querySelector(`#diceGrid .die[data-i="${i}"]`);
+  if(!el){dice.vals[i]=final;renderDice();if(cb)cb();return;}
+  el.classList.remove('empty');el.classList.add('rolling');
+  let n=0;const iv=setInterval(()=>{el.innerHTML=dieHTML(1+Math.floor(Math.random()*6));if(++n>7){clearInterval(iv);el.classList.remove('rolling');dice.vals[i]=final;renderDice();if(cb)cb();}},55);
+}
+function rollOne(i){animateDie(i,1+Math.floor(Math.random()*6));}
+function rollAll(){let done=0,tot=dice.names.length;dice.names.forEach((_,i)=>animateDie(i,1+Math.floor(Math.random()*6),()=>{if(++done===tot)renderDice();}));}
+function confirmOrder(){
+  const{order}=ranks();
+  const seats=order.map(o=>({name:dice.names[o.i],bot:!!(dice.isBot&&dice.isBot[o.i]),skill:dice.skill}));
+  const legsToWin=Math.ceil(setupBestLegs/2), setsToWin=Math.ceil(setupBestSets/2);
+  const mf={legsToWin,setsToWin,startSeat:0,legDone:false,setJustWon:false,matchOver:false};
+  if(setupMode==='cricket'||setupMode==='tactics'){
+    const nums=setupMode==='tactics'?TACTICS_NUMS.slice():NUMS.slice();
+    state=Object.assign({mode:'cricket',variant:setupMode,nums,cutthroat:setupCutthroat,started:true,
+      players:seats.map(s=>{const pl=freshCricket(s.name,nums);pl.matchPoints=0;pl.legs=0;pl.sets=0;pl.isBot=s.bot;pl.skill=s.skill;return pl;}),
+      current:0,darts:0,round:1,saved:false},mf);
+  }else if(setupMode==='clock'||setupMode==='doubles'){
+    const seq=[];for(let i=1;i<=20;i++)seq.push(i);seq.push(25);
+    state=Object.assign({mode:'seq',seqType:setupMode,seq,started:true,
+      players:seats.map(s=>({name:s.name,pos:0,darts:0,hits:0,legs:0,sets:0,isBot:s.bot,skill:s.skill})),
+      current:0,darts:0,round:1,saved:false},mf);
+  }else if(setupMode==='shanghai'||setupMode==='halveit'){
+    let roundList;
+    if(setupMode==='shanghai'){roundList=[];for(let i=1;i<=7;i++)roundList.push({type:'num',n:i});}
+    else{roundList=[15,16,17,18,19,20].map(n=>({type:'num',n}));roundList.push({type:'bull'},{type:'double'},{type:'triple'});}
+    state=Object.assign({mode:'rounds',roundsType:setupMode,roundList,hiTurn:0,sdt:{},started:true,
+      players:seats.map(s=>({name:s.name,score:0,darts:0,shanghaiWin:false,legs:0,sets:0,isBot:s.bot,skill:s.skill})),
+      current:0,darts:0,round:1,saved:false},mf);
+  }else if(setupMode==='checkout'){
+    const target=Math.max(2,Math.min(170,setupCoTarget||121));
+    state=Object.assign({mode:'x01',target,doubleOut:true,checkout:true,started:true,
+      players:seats.map(s=>({name:s.name,score:target,dartsUsed:0,count180:0,scored:0,bestFinish:0,legs:0,sets:0,isBot:s.bot,skill:s.skill})),
+      current:0,darts:0,round:1,saved:false,turnStart:target,bust:false,dartsLog:[]},mf);
+  }else{
+    const target=Number(setupMode);
+    state=Object.assign({mode:'x01',target,doubleOut:setupDoubleOut,started:true,
+      players:seats.map(s=>({name:s.name,score:target,dartsUsed:0,count180:0,scored:0,bestFinish:0,legs:0,sets:0,isBot:s.bot,skill:s.skill})),
+      current:0,darts:0,round:1,saved:false,turnStart:target,bust:false,dartsLog:[]},mf);
+  }
+  history=[];mult=1;save();showGame();
+}
+
+/* ---------- scorebord / historiek ---------- */
+function gameLabel(){
+  if(state.mode==='cricket')return state.variant==='tactics'?'Tactics':'Cricket';
+  if(state.mode==='seq')return state.seqType==='clock'?'Klok':'Dubbels';
+  if(state.mode==='rounds')return state.roundsType==='shanghai'?'Shanghai':'Halve It';
+  if(state.checkout)return 'CO '+state.target;
+  return String(state.target);
+}
+function saveResult(){
+  const w=win();
+  const rec={ts:Date.now(),mode:state.mode,label:gameLabel(),hasBot:state.players.some(p=>p.isBot),
+    legs:state.legsToWin*2-1,sets:state.setsToWin*2-1,
+    date:new Date().toLocaleString('nl-BE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}),
+    winner:w?w.name:null};
+  if(state.mode==='cricket'){rec.variant=state.variant;rec.results=state.players.map(p=>({name:p.name,points:p.matchPoints||p.points||0,sets:p.sets||0,legs:p.legs||0}));}
+  else if(state.mode==='seq'){rec.seqType=state.seqType;rec.results=state.players.map(p=>({name:p.name,darts:p.darts||0,hits:p.hits||0,done:(p.pos||0)>=state.seq.length,sets:p.sets||0,legs:p.legs||0}));}
+  else if(state.mode==='rounds'){rec.roundsType=state.roundsType;rec.results=state.players.map(p=>({name:p.name,score:p.score||0,shanghai:!!p.shanghaiWin,sets:p.sets||0,legs:p.legs||0}));}
+  else{rec.target=state.target;rec.checkout=!!state.checkout;rec.results=state.players.map(p=>({name:p.name,darts:p.dartsUsed,remaining:p.score,won:p.score===0,c180:p.count180||0,finish:p.bestFinish||0,scored:p.scored||0,sets:p.sets||0,legs:p.legs||0}));}
+  games.push(rec);state.saved=true;saveGames();save();
+}
+function filteredGames(){
+  return games.filter(g=>{
+    if(g.hasBot&&!showBot)return false;
+    if(histFilter==='all')return true;
+    if(histFilter==='cricket')return g.mode==='cricket';
+    if(histFilter==='501')return g.mode==='x01'&&g.target===501&&!g.checkout;
+    if(histFilter==='201')return g.mode==='x01'&&g.target===201&&!g.checkout;
+    if(histFilter==='checkout')return g.mode==='x01'&&g.checkout;
+    if(histFilter==='clock')return g.mode==='seq'&&g.seqType==='clock';
+    if(histFilter==='doubles')return g.mode==='seq'&&g.seqType==='doubles';
+    if(histFilter==='shanghai')return g.mode==='rounds'&&g.roundsType==='shanghai';
+    if(histFilter==='halveit')return g.mode==='rounds'&&g.roundsType==='halveit';
+    return true;
+  });
+}
+function renderHistory(){
+  document.querySelectorAll('#histFilter button').forEach(b=>b.classList.toggle('active',b.dataset.f===histFilter));
+  const gs=filteredGames();
+  const isCricket=histFilter==='cricket', isX01=(histFilter==='501'||histFilter==='201'||histFilter==='checkout'), isSeq=(histFilter==='clock'||histFilter==='doubles'), isRounds=(histFilter==='shanghai'||histFilter==='halveit');
+
+  // ranglijst
+  const agg={};
+  gs.forEach(g=>g.results.forEach(r=>{
+    const a=agg[r.name]||(agg[r.name]={name:r.name,games:0,wins:0,points:0,best:0,darts:0,bestDarts:Infinity,scored:0,c180:0,bestFinish:0,hits:0});
+    a.games++;if(g.winner===r.name)a.wins++;
+    if(g.mode==='cricket'){a.points+=r.points||0;if((r.points||0)>a.best)a.best=r.points||0;}
+    else if(g.mode==='seq'){a.darts+=r.darts||0;a.hits+=r.hits||0;if(r.done&&(r.darts||0)<a.bestDarts)a.bestDarts=r.darts;}
+    else if(g.mode==='rounds'){a.points+=r.score||0;if((r.score||0)>a.best)a.best=r.score||0;}
+    else{
+      a.darts+=r.darts||0;
+      if(g.winner===r.name&&(r.darts||0)<a.bestDarts)a.bestDarts=r.darts;
+      a.scored+=(r.scored!=null?r.scored:((g.target||0)-(r.remaining||0)));
+      a.c180+=r.c180||0;
+      if((r.finish||0)>a.bestFinish)a.bestFinish=r.finish||0;
+    }
+  }));
+  let rows=Object.values(agg);
+  const lt=document.getElementById('leadTable');
+  if(rows.length===0){lt.innerHTML='<p class="empty-note">Nog geen spellen in deze categorie. Sluit een spel af en bewaar het resultaat.</p>';}
+  else if(isCricket){
+    rows.sort((a,b)=>b.wins-a.wins||b.points-a.points);
+    lt.innerHTML=`<table class="lead"><thead><tr><th>Speler</th><th>Spellen</th><th>Gewonnen</th><th>Totaal ptn</th><th>Beste</th><th>Gem.</th></tr></thead><tbody>`+
+      rows.map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${r.games}</td><td class="${r.wins?'win':''}">${r.wins}</td><td>${r.points}</td><td>${r.best}</td><td>${(r.points/r.games).toFixed(1)}</td></tr>`).join('')+`</tbody></table>`;
+  }else if(isX01){
+    rows.sort((a,b)=>b.wins-a.wins||(b.scored/Math.max(1,b.darts))-(a.scored/Math.max(1,a.darts)));
+    lt.innerHTML=`<table class="lead"><thead><tr><th>Speler</th><th>Spellen</th><th>Gew.</th><th>3-pijls gem.</th><th>Hoogste finish</th><th>180's</th></tr></thead><tbody>`+
+      rows.map(r=>{
+        const avg3=r.darts>0?(r.scored/r.darts*3).toFixed(1):'—';
+        return `<tr><td>${escapeHtml(r.name)}</td><td>${r.games}</td><td class="${r.wins?'win':''}">${r.wins}</td><td>${avg3}</td><td>${r.bestFinish||'—'}</td><td>${r.c180||0}</td></tr>`;
+      }).join('')+`</tbody></table>`;
+  }else if(isSeq){
+    rows.sort((a,b)=>b.wins-a.wins||a.bestDarts-b.bestDarts);
+    lt.innerHTML=`<table class="lead"><thead><tr><th>Speler</th><th>Spellen</th><th>Gew.</th><th>Beste (pijlen)</th><th>Raak %</th></tr></thead><tbody>`+
+      rows.map(r=>{
+        const acc=r.darts>0?Math.round(r.hits/r.darts*100)+'%':'—';
+        return `<tr><td>${escapeHtml(r.name)}</td><td>${r.games}</td><td class="${r.wins?'win':''}">${r.wins}</td><td>${isFinite(r.bestDarts)?r.bestDarts:'—'}</td><td>${acc}</td></tr>`;
+      }).join('')+`</tbody></table>`;
+  }else if(isRounds){
+    rows.sort((a,b)=>b.wins-a.wins||b.best-a.best);
+    lt.innerHTML=`<table class="lead"><thead><tr><th>Speler</th><th>Spellen</th><th>Gew.</th><th>Beste score</th><th>Gem. score</th></tr></thead><tbody>`+
+      rows.map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${r.games}</td><td class="${r.wins?'win':''}">${r.wins}</td><td>${r.best}</td><td>${(r.points/r.games).toFixed(0)}</td></tr>`).join('')+`</tbody></table>`;
+  }else{
+    rows.sort((a,b)=>b.wins-a.wins||b.games-a.games);
+    lt.innerHTML=`<table class="lead"><thead><tr><th>Speler</th><th>Spellen</th><th>Gewonnen</th></tr></thead><tbody>`+
+      rows.map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${r.games}</td><td class="${r.wins?'win':''}">${r.wins}</td></tr>`).join('')+`</tbody></table>`;
+  }
+
+  document.getElementById('chartArea').innerHTML=buildChart(gs);
+
+  // gespeelde spellen
+  const gl=document.getElementById('gameLog');
+  if(gs.length===0)gl.innerHTML='<p class="empty-note">Geen spellen.</p>';
+  else gl.innerHTML=[...gs].reverse().map((g,idx)=>{
+    const no=gs.length-idx;
+    const mlbl=g.label||(g.mode==='cricket'?'Cricket':String(g.target));
+    let line;
+    if(g.mode==='cricket')line=g.results.slice().sort((a,b)=>b.points-a.points).map(r=>`${escapeHtml(r.name)} ${r.points}`).join(' · ');
+    else if(g.mode==='seq')line=g.results.slice().sort((a,b)=>(b.done?1:0)-(a.done?1:0)||a.darts-b.darts).map(r=>`${escapeHtml(r.name)} ${r.done?'✓':''}${r.darts}p`).join(' · ');
+    else if(g.mode==='rounds')line=g.results.slice().sort((a,b)=>b.score-a.score).map(r=>`${escapeHtml(r.name)} ${r.score}${r.shanghai?' 🏯':''}`).join(' · ');
+    else line=g.results.slice().sort((a,b)=>(b.won?1:0)-(a.won?1:0)||a.remaining-b.remaining).map(r=>`${escapeHtml(r.name)} ${r.won?'✓':r.remaining} (${r.darts}p)`).join(' · ');
+    return `<div class="glog"><div class="gdate"><span class="badge">${mlbl}</span>${no}. ${g.date}</div>
+      <div>🏆 <b>${g.winner?escapeHtml(g.winner):'—'}</b> &nbsp; ${line}</div></div>`;
+  }).join('');
+}
+function buildChart(gs){
+  if(gs.length===0)return '<p class="empty-note">Verschijnt zodra er spellen bewaard zijn.</p>';
+  const names=[];gs.forEach(g=>g.results.forEach(r=>{if(!names.includes(r.name))names.push(r.name);}));
+  let label,getVal;
+  if(histFilter==='cricket'||histFilter==='shanghai'||histFilter==='halveit'){label=histFilter==='cricket'?'Punten per spel':'Score per spel';getVal=(g,nm)=>{const r=g.results.find(x=>x.name===nm);return r?(r.points!=null?r.points:(r.score||0)):null;};}
+  else if(histFilter==='501'||histFilter==='201'||histFilter==='checkout'||histFilter==='clock'||histFilter==='doubles'){label='Pijlen per spel (lager = beter)';getVal=(g,nm)=>{const r=g.results.find(x=>x.name===nm);return r?(r.darts||0):null;};}
+  else{
+    label='Overwinningen (cumulatief)';
+    const cum={};names.forEach(nm=>cum[nm]=0);
+    const matrix=gs.map(g=>{names.forEach(nm=>{if(g.winner===nm)cum[nm]++;});const row={};names.forEach(nm=>row[nm]=cum[nm]);return row;});
+    getVal=(g,nm,gi)=>matrix[gi][nm];
+  }
+  const W=600,H=270,PADL=42,PADB=28,PADT=14,PADR=12,n=gs.length;
+  let maxV=1;names.forEach(nm=>gs.forEach((g,gi)=>{const v=getVal(g,nm,gi);if(v!=null&&v>maxV)maxV=v;}));
+  const x=k=>PADL+(n<=1?(W-PADL-PADR)/2:(k/(n-1))*(W-PADL-PADR));
+  const y=v=>H-PADB-(v/maxV)*(H-PADB-PADT);
+  let svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" font-family="inherit">`;
+  for(let t=0;t<=4;t++){const val=Math.round(maxV*t/4),yy=y(val);
+    svg+=`<line x1="${PADL}" y1="${yy}" x2="${W-PADR}" y2="${yy}" stroke="rgba(243,239,226,.12)"/>`;
+    svg+=`<text x="${PADL-6}" y="${yy+4}" fill="#bdb8a6" font-size="11" text-anchor="end">${val}</text>`;}
+  for(let k=0;k<n;k++)svg+=`<text x="${x(k)}" y="${H-8}" fill="#bdb8a6" font-size="11" text-anchor="middle">${k+1}</text>`;
+  names.forEach((nm,idx)=>{
+    const col=PALETTE[idx%PALETTE.length], pts=[];
+    gs.forEach((g,k)=>{const v=getVal(g,nm,k);if(v!=null)pts.push([x(k),y(v)]);});
+    if(pts.length>1)svg+=`<polyline fill="none" stroke="${col}" stroke-width="2.5" points="${pts.map(p=>p.join(',')).join(' ')}"/>`;
+    pts.forEach(p=>svg+=`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="${col}"/>`);
+  });
+  svg+=`</svg>`;
+  const legend=`<div class="legend">`+names.map((nm,idx)=>`<span><i style="background:${PALETTE[idx%PALETTE.length]}"></i>${escapeHtml(nm)}</span>`).join('')+`</div>`;
+  return `<div class="chartwrap"><p class="charttitle">${label}</p>${svg}${legend}</div>`;
+}
+
+/* ---------- setup ---------- */
+function renderSetup(names){
+  const wrap=document.getElementById('playersSetup');
+  wrap.innerHTML=names.map((nm,i)=>`<div class="prow"><span class="num">${i+1}</span>
+    <input type="text" value="${escapeHtml(nm)}" placeholder="Naam speler ${i+1}">
+    <button class="btn-x" title="Verwijder">✕</button></div>`).join('');
+  wrap.querySelectorAll('.btn-x').forEach((b,idx)=>b.onclick=()=>{const c=getNames();c.splice(idx,1);renderSetup(c.length?c:['','']);});
+}
+function getNames(){return[...document.querySelectorAll('#playersSetup input')].map(i=>i.value);}
+function applyModeUI(){
+  document.querySelectorAll('#modeSel button').forEach(x=>x.classList.toggle('active',x.dataset.mode===setupMode));
+  const isCrk=(setupMode==='cricket'||setupMode==='tactics');
+  document.getElementById('optDoubleOut').classList.toggle('hidden',!(setupMode==='501'||setupMode==='201'));
+  document.getElementById('doubleOut').checked=setupDoubleOut;
+  document.getElementById('optCutthroat').classList.toggle('hidden',!isCrk);
+  document.getElementById('cutthroat').checked=setupCutthroat;
+  document.getElementById('optCheckout').classList.toggle('hidden',setupMode!=='checkout');
+  document.getElementById('coTarget').value=setupCoTarget;
+  document.getElementById('bestLegs').value=String(setupBestLegs);
+  document.getElementById('bestSets').value=String(setupBestSets);
+  document.getElementById('vsBot').checked=setupVsBot;
+  document.getElementById('optSkill').classList.toggle('hidden',!setupVsBot);
+  document.getElementById('skillRange').value=setupSkill;
+  document.getElementById('skillVal').textContent=setupSkill;
+}
+function restoreSetupFromState(){
+  if(!state)return;
+  if(state.mode==='x01')setupMode=state.checkout?'checkout':String(state.target);
+  else if(state.mode==='seq')setupMode=state.seqType;
+  else if(state.mode==='rounds')setupMode=state.roundsType;
+  else setupMode=state.variant||'cricket';
+  if(state.checkout)setupCoTarget=state.target;
+  setupDoubleOut=!!state.doubleOut;setupCutthroat=!!state.cutthroat;
+  setupBestLegs=(state.legsToWin||1)*2-1;setupBestSets=(state.setsToWin||1)*2-1;
+}
+
+/* ---------- navigatie ---------- */
+function hide(...ids){ids.forEach(id=>document.getElementById(id).classList.add('hidden'));}
+function show1(id){document.getElementById(id).classList.remove('hidden');}
+function showSetup(prefill){clearAuto();document.body.classList.remove('playing');hide('dice','game','history');show1('setup');renderSetup(prefill&&prefill.length?prefill:['','']);applyModeUI();}
+function showDice(){
+  let names=getNames().map(s=>s.trim()).filter(Boolean);
+  setupDoubleOut=document.getElementById('doubleOut').checked;
+  setupCutthroat=document.getElementById('cutthroat').checked;
+  setupCoTarget=Math.max(2,Math.min(170,Number(document.getElementById('coTarget').value)||121));
+  setupBestLegs=Number(document.getElementById('bestLegs').value)||1;
+  setupBestSets=Number(document.getElementById('bestSets').value)||1;
+  setupVsBot=document.getElementById('vsBot').checked;
+  setupSkill=Number(document.getElementById('skillRange').value);
+  const minHumans=setupVsBot?1:2;
+  if(names.length<minHumans){alert(setupVsBot?"Voeg minstens 1 speler toe.":"Voeg minstens 2 spelers toe.");return;}
+  saveNames(names);
+  const isBot=names.map(()=>false);
+  if(setupVsBot){names=names.concat(["🤖 Robot"]);isBot.push(true);}
+  dice={names,isBot,skill:setupSkill,vals:names.map(()=>0)};
+  clearAuto();document.body.classList.remove('playing');
+  hide('setup','game','history');show1('dice');renderDice();
+}
+function showGame(){document.body.classList.add('playing');hide('setup','dice','history');show1('game');render();botTurnIfNeeded();}
+function showHistory(){clearAuto();document.body.classList.remove('playing');loadGames();hide('setup','dice','game');show1('history');renderHistory();}
+
+/* ---------- knoppen ---------- */
+document.querySelectorAll('#modeSel button').forEach(b=>b.onclick=()=>{
+  setupMode=b.dataset.mode;applyModeUI();
+});
+document.getElementById('vsBot').onchange=e=>{setupVsBot=e.target.checked;applyModeUI();};
+document.getElementById('skillRange').oninput=e=>{setupSkill=Number(e.target.value);document.getElementById('skillVal').textContent=setupSkill;};
+document.getElementById('cutthroat').onchange=e=>{setupCutthroat=e.target.checked;};
+document.getElementById('bestLegs').onchange=e=>{setupBestLegs=Number(e.target.value)||1;};
+document.getElementById('bestSets').onchange=e=>{setupBestSets=Number(e.target.value)||1;};
+document.getElementById('coTarget').onchange=e=>{setupCoTarget=Math.max(2,Math.min(170,Number(e.target.value)||121));e.target.value=setupCoTarget;};
+document.getElementById('showBot').onchange=e=>{showBot=e.target.checked;renderHistory();};
+document.getElementById('muteBtn').onclick=()=>{muted=!muted;try{localStorage.setItem(STORE_MUTE,muted?'1':'0');}catch(e){}document.getElementById('muteBtn').textContent=muted?'🔇':'🔊';};
+document.getElementById('hintToggle').onclick=()=>{const h=document.getElementById('gameHint');const sh=h.classList.toggle('hidden');document.getElementById('hintToggle').textContent=sh?'ⓘ Spelregels tonen':'ⓘ Spelregels verbergen';};
+document.getElementById('addPlayer').onclick=()=>{const c=getNames();c.push('');renderSetup(c);};
+document.getElementById('toDice').onclick=showDice;
+document.getElementById('toHistory1').onclick=showHistory;
+document.getElementById('rollAll').onclick=rollAll;
+document.getElementById('confirmOrder').onclick=confirmOrder;
+document.getElementById('backToSetup').onclick=()=>showSetup(dice?dice.names:['','']);
+document.querySelectorAll('.mult').forEach(b=>b.onclick=()=>{mult=Number(b.dataset.m);save();render();});
+document.getElementById('undo').onclick=()=>{if(!history.length)return;clearAuto();suppressAuto=true;state=JSON.parse(history.pop());save();render();};
+document.getElementById('toHistory2').onclick=showHistory;
+document.getElementById('newGame').onclick=()=>{
+  if(state&&!state.saved&&gameHasProgress()){
+    if(confirm("Resultaat eerst bewaren in het scorebord?"))saveResult();
+  }
+  if(state){restoreSetupFromState();}
+  const players=state?state.players:[];
+  const bot=players.find(p=>p.isBot);
+  setupVsBot=!!bot; if(bot)setupSkill=bot.skill||5;
+  const names=players.length?players.map(p=>p.name):['',''];
+  const isBot=players.length?players.map(p=>!!p.isBot):[false,false];
+  dice={names,isBot,skill:setupSkill,vals:names.map(()=>0)};
+  clearAuto();document.body.classList.remove('playing');
+  hide('setup','game','history');show1('dice');renderDice();
+};
+document.getElementById('quitGame').onclick=()=>{
+  if(state&&!state.saved&&gameHasProgress()){
+    if(confirm("Resultaat eerst bewaren in het scorebord?"))saveResult();
+  }
+  if(state){restoreSetupFromState();}
+  const players=state?state.players:[];
+  const bot=players.find(p=>p.isBot);
+  setupVsBot=!!bot; if(bot)setupSkill=bot.skill||5;
+  const names=players.filter(p=>!p.isBot).map(p=>p.name);
+  state=null;save();showSetup(names.length?names:['','']);
+};
+document.querySelectorAll('#histFilter button').forEach(b=>b.onclick=()=>{histFilter=b.dataset.f;renderHistory();});
+document.getElementById('backFromHistory').onclick=()=>{if(state&&state.started)showGame();else showSetup(['','']);};
+document.getElementById('clearHistory').onclick=()=>{if(confirm("Hele historiek wissen?")){games=[];saveGames();renderHistory();}};
+
+/* ---------- back-up: export / import ---------- */
+function backupMsg(t){const el=document.getElementById('backupMsg');if(el)el.textContent=t||'';}
+function buildBackup(){
+  return JSON.stringify({app:"darts-scorebord",version:3,exportedAt:new Date().toISOString(),games,state,mult},null,2);
+}
+function doExport(){
+  const txt=buildBackup();
+  document.getElementById('backupText').value=txt;
+  // probeer ook een bestand te downloaden (lukt niet overal op iOS — dan blijft de tekst over om te kopiëren)
+  try{
+    const blob=new Blob([txt],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const d=new Date(),pad=n=>String(n).padStart(2,'0');
+    a.href=url;a.download=`darts-backup-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.json`;
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1500);
+  }catch(e){}
+  backupMsg(`Klaar: ${games.length} spel(len)${state?' + lopend spel':''}. Lukt downloaden niet, kopieer dan de tekst hieronder.`);
+}
+function copyBackup(){
+  const ta=document.getElementById('backupText');
+  if(!ta.value)ta.value=buildBackup();
+  ta.focus();ta.select();ta.setSelectionRange(0,ta.value.length);
+  let ok=false;
+  try{ok=document.execCommand('copy');}catch(e){}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(ta.value).then(()=>backupMsg('Tekst gekopieerd. Plak en bewaar ze bv. in Notities.')).catch(()=>{});}
+  backupMsg(ok?'Tekst gekopieerd. Plak en bewaar ze bv. in Notities.':'Selecteer de tekst en kopieer ze handmatig (lang indrukken → Kopieer).');
+}
+function importData(txt){
+  let d;
+  try{d=JSON.parse(txt);}catch(e){backupMsg('Kon de tekst niet lezen — is het wel een volledige back-up?');return;}
+  if(!d||!Array.isArray(d.games)){backupMsg('Dit lijkt geen darts-back-up te zijn.');return;}
+  games=d.games;saveGames();
+  let extra='';
+  if(d.state){state=d.state;mult=d.mult||1;save();extra=' + lopend spel';}
+  histFilter='all';renderHistory();
+  backupMsg(`Geïmporteerd: ${games.length} spel(len)${extra}. ${d.state?'Tik op "◂ Terug" om verder te spelen.':''}`);
+}
+document.getElementById('doExport').onclick=doExport;
+document.getElementById('copyBackup').onclick=copyBackup;
+document.getElementById('importTextBtn').onclick=()=>{
+  const v=document.getElementById('backupText').value.trim();
+  if(!v){backupMsg('Plak eerst je back-uptekst in het vak.');return;}
+  importData(v);
+};
+document.getElementById('pickImportFile').onclick=()=>document.getElementById('importFileInput').click();
+document.getElementById('importFileInput').onchange=e=>{
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{document.getElementById('backupText').value=r.result;importData(String(r.result));};
+  r.onerror=()=>backupMsg('Kon het bestand niet lezen.');
+  r.readAsText(f);
+  e.target.value='';
+};
+
+/* ---------- init ---------- */
+loadGames();
+try{muted=localStorage.getItem(STORE_MUTE)==='1';}catch(e){}
+document.getElementById('muteBtn').textContent=muted?'🔇':'🔊';
+if(load()&&state&&state.started){showGame();}else{showSetup(loadNames()||['','']);}
+</script>
+</body>
+</html>
